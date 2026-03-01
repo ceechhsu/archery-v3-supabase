@@ -132,11 +132,15 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <p className="text-sm font-medium text-zinc-500 ">
-                                                {dateObj.toLocaleDateString(undefined, {
-                                                    weekday: 'short',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                })}
+                                                {(() => {
+                                                    const [y, m, d] = session.session_date.split('-')
+                                                    const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+                                                    return dateObj.toLocaleDateString(undefined, {
+                                                        weekday: 'short',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                    })
+                                                })()}
                                             </p>
                                             <p className="mt-1 text-2xl font-semibold text-zinc-900 ">
                                                 {totalScore} <span className="text-sm font-normal text-zinc-500 ">pts</span>

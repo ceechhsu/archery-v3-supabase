@@ -70,8 +70,14 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
     const [error, setError] = useState<string | null>(null)
 
     const distanceRef = useRef<HTMLInputElement>(null)
+
+    const getLocalDateString = () => {
+        const d = new Date()
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+
     const [distance, setDistance] = useState<string>(initialSession?.distance?.toString() || '')
-    const [date, setDate] = useState(initialSession?.session_date ? new Date(initialSession.session_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
+    const [date, setDate] = useState(initialSession?.session_date || getLocalDateString())
     const [notes, setNotes] = useState(initialSession?.notes || '')
     const [shotsPerEnd, setShotsPerEnd] = useState(initialSession?.ends?.[0]?.shots?.length || 5)
     const [ends, setEnds] = useState<End[]>(getDefaultEnds())

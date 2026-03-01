@@ -4,10 +4,8 @@ import Link from 'next/link'
 import { ScorecardClient } from './ScorecardClient'
 import { ArrowLeft } from 'lucide-react'
 
-export default async function LogSessionPage({
-    searchParams,
-}: {
-    searchParams: { [key: string]: string | string[] | undefined }
+export default async function LogSessionPage(props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const supabase = await createClient()
 
@@ -21,6 +19,7 @@ export default async function LogSessionPage({
     }
 
     // Check for edit mode
+    const searchParams = await props.searchParams
     const editId = searchParams.edit
     let initialSession = null
 
