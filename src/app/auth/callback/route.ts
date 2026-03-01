@@ -5,18 +5,22 @@ export async function GET(request: Request) {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
 
+    // Determine the true host from headers in case we are behind a Vercel proxy
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const isLocalEnv = process.env.NODE_ENV === 'development'
+    const origin = isLocalEnv ? requestUrl.origin : (forwardedHost ? `https://${forwardedHost}` : requestUrl.origin)
+
     if (code) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-        // We should be redirecting the user even if there's an error. 
-        // Usually you'd redirect to an error page, but for simplicity we'll redirect to the home page
-        // and let the middleware bounce them back to login if the session wasn't established.
-        if (!error) {
-            return NextResponse.redirect(requestUrl.origin)
+        if (error) {
+            console.error('Exchange Code Error:', error)
+            return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
         }
+
+        return NextResponse.redirect(`${origin}/`)
     }
 
-    // URL to redirect to after sign in process completes
-    return NextResponse.redirect(requestUrl.origin)
+    return NextResponse.redirect(`${origin}/login?error=No_Code_Provided`)
 }
