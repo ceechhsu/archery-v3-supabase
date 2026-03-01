@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, CalendarDays, ChevronDown, ChevronRight, MapPin, FileText, X, Target } from 'lucide-react'
+import { Pencil, Trash2, ChevronDown, ChevronRight, MapPin, FileText, X, Target } from 'lucide-react'
 import { isSameDay } from 'date-fns'
 import { DashboardCalendar } from './DashboardCalendar'
 import { createClient } from '@/utils/supabase/client'
@@ -144,7 +144,6 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                             })
                         })
 
-                        const avgScore = totalArrows > 0 ? (totalScore / totalArrows).toFixed(1) : '0'
                         const isExpanded = expandedSessionId === session.id
 
                         return (
@@ -152,55 +151,40 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                 key={session.id}
                                 className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-stone-300 hover:shadow-md relative group"
                             >
-                                <div className="p-5">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
-                                                <CalendarDays className="h-4 w-4" />
-                                                {(() => {
-                                                    const [y, m, d] = session.session_date.split('-')
-                                                    const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
-                                                    return dateObj.toLocaleDateString(undefined, {
-                                                        weekday: 'short',
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })
-                                                })()}
-                                            </div>
-                                            <p className="mt-1 text-2xl font-bold text-forest">
-                                                {totalScore} <span className="text-sm font-normal text-stone-500">pts</span>
-                                            </p>
+                                <div className="p-4">
+                                    {/* Compact Single Line Header */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap text-sm">
+                                            <span className="font-medium text-stone-700">
+                                                {new Date(session.session_date).toLocaleString(undefined, {
+                                                    weekday: 'short',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: 'numeric',
+                                                    minute: '2-digit',
+                                                })}
+                                            </span>
+                                            <span className="text-stone-300">|</span>
+                                            <span className="text-stone-600">{totalArrows} Arrows</span>
+                                            <span className="text-stone-300">|</span>
+                                            <span className="text-stone-600">{session.ends?.length || 0} Ends</span>
+                                            <span className="text-stone-300">|</span>
+                                            <span className="font-bold text-forest">{totalScore} Pts</span>
                                         </div>
-
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium text-stone-500">
-                                                Avg/Arrow
-                                            </p>
-                                            <p className="mt-1 text-2xl font-bold text-stone-800">
-                                                {avgScore}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4">
-                                        <div className="flex items-center gap-4 text-sm text-stone-500">
-                                            <span className="bg-stone-100 px-2 py-1 rounded-md">{totalArrows} Arrows</span>
-                                            <span className="bg-stone-100 px-2 py-1 rounded-md">{session.ends?.length || 0} Ends</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1 shrink-0">
                                             <Link
                                                 href={`/log?edit=${session.id}`}
-                                                className="rounded-full bg-stone-100 p-2 text-stone-500 hover:bg-forest hover:text-white transition-colors shadow-sm"
+                                                className="rounded-full p-1.5 text-stone-400 hover:bg-forest hover:text-white transition-colors"
                                                 title="Edit Session"
                                             >
-                                                <Pencil className="h-4 w-4" />
+                                                <Pencil className="h-3.5 w-3.5" />
                                             </Link>
                                             <button
                                                 onClick={() => handleDelete(session.id)}
-                                                className="rounded-full bg-stone-100 p-2 text-stone-500 hover:bg-terracotta hover:text-white transition-colors shadow-sm"
+                                                className="rounded-full p-1.5 text-stone-400 hover:bg-terracotta hover:text-white transition-colors"
                                                 title="Delete Session"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
                                     </div>
