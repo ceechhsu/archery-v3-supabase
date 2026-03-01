@@ -2,26 +2,58 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, CalendarDays, Target } from 'lucide-react'
+import { Pencil, Trash2, CalendarDays, ChevronDown, ChevronRight, MapPin, FileText, X, Target } from 'lucide-react'
 import { isSameDay } from 'date-fns'
 import { DashboardCalendar } from './DashboardCalendar'
 import { createClient } from '@/utils/supabase/client'
 
+type Shot = {
+    score: number
+    is_x?: boolean
+    is_m?: boolean
+}
+
+type End = {
+    id: string
+    photo_url: string | null
+    shots: Shot[]
+}
+
 type Session = {
     id: string
     session_date: string
+    distance: number | null
     notes: string | null
-    ends: {
-        id: string
-        photo_url: string | null
-        shots: { score: number }[]
-    }[]
+    ends: End[]
+}
+
+// Shot badge color based on archery target scoring
+const getShotBadgeColor = (shot: Shot): string => {
+    if (shot.is_x || shot.score === 10) return 'bg-[#ffe142] text-yellow-950 border-[#e6c83b]'
+    if (shot.score === 9) return 'bg-[#ffe142] text-yellow-950 border-[#e6c83b]'
+    if (shot.score === 8 || shot.score === 7) return 'bg-[#f03224] text-white border-[#d92d20]'
+    if (shot.score === 6 || shot.score === 5) return 'bg-[#3eb6e6] text-white border-[#2d9fd1]'
+    if (shot.score === 4 || shot.score === 3) return 'bg-[#1b1918] text-white border-[#000000]'
+    if (shot.score === 2 || shot.score === 1) return 'bg-white text-stone-800 border-stone-300'
+    if (shot.is_m || shot.score === 0) return 'bg-stone-200 text-stone-500 border-stone-300'
+    return 'bg-stone-100 text-stone-400 border-stone-200'
+}
+
+// Format shot display value
+const formatShotValue = (shot: Shot): string => {
+    if (shot.is_x) return 'X'
+    if (shot.is_m) return 'M'
+    return shot.score?.toString() || '-'
 }
 
 export function DashboardClient({ initialSessions }: { initialSessions: Session[] }) {
     const [sessions, setSessions] = useState<Session[]>(initialSessions)
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
+    const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
+    const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null)
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
     const parseLocalDate = (dateStr: string) => {
         const [y, m, d] = dateStr.split('-')
@@ -38,6 +70,11 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
             const date = parseLocalDate(s.session_date)
             return date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear()
         })
+
+    // Toggle session expansion
+    const toggleExpanded = (sessionId: string) => {
+        setExpandedSessionId(prev => prev === sessionId ? null : sessionId)
+    }
 
     // Handle Delete Session
     const handleDelete = async (sessionId: string) => {
@@ -59,6 +96,12 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
 
         // Remove from local state
         setSessions(prev => prev.filter(s => s.id !== sessionId))
+    }
+
+    // Get photo URL
+    const getPhotoUrl = (photoUrl: string | null): string | null => {
+        if (!photoUrl || !supabaseUrl) return null
+        return `${supabaseUrl}/storage/v1/object/public/session_photos/${photoUrl}`
     }
 
     return (
@@ -102,6 +145,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                         })
 
                         const avgScore = totalArrows > 0 ? (totalScore / totalArrows).toFixed(1) : '0'
+                        const isExpanded = expandedSessionId === session.id
 
                         return (
                             <div
@@ -160,6 +204,95 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                             </button>
                                         </div>
                                     </div>
+
+                                    {/* Expand/Collapse Button */}
+                                    <button
+                                        onClick={() => toggleExpanded(session.id)}
+                                        className="mt-4 w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-stone-500 hover:text-forest transition-colors border-t border-stone-100"
+                                    >
+                                        {isExpanded ? (
+                                            <>
+                                                <ChevronDown className="h-4 w-4" />
+                                                Collapse View
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ChevronRight className="h-4 w-4" />
+                                                Expand View
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Expanded Details */}
+                                    {isExpanded && (
+                                        <div className="mt-4 pt-4 border-t border-stone-200 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                            {/* Session Meta Info */}
+                                            {(session.distance || session.notes) && (
+                                                <div className="space-y-2">
+                                                    {session.distance && (
+                                                        <div className="flex items-center gap-2 text-sm text-stone-600">
+                                                            <MapPin className="h-4 w-4 text-forest" />
+                                                            <span>Distance: <strong>{session.distance}m</strong></span>
+                                                        </div>
+                                                    )}
+                                                    {session.notes && (
+                                                        <div className="flex items-start gap-2 text-sm text-stone-600">
+                                                            <FileText className="h-4 w-4 text-forest mt-0.5" />
+                                                            <span className="flex-1">{session.notes}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Ends Detail */}
+                                            <div className="space-y-3">
+                                                <h4 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">Ends Detail</h4>
+                                                {session.ends?.map((end, endIdx) => {
+                                                    const endTotal = end.shots.reduce((acc, shot) => acc + (shot.score || 0), 0)
+                                                    const photoUrl = getPhotoUrl(end.photo_url)
+
+                                                    return (
+                                                        <div key={end.id} className="bg-stone-50 rounded-xl p-3">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="text-sm font-semibold text-stone-700">End {endIdx + 1}</span>
+                                                                <span className="text-sm font-medium text-forest">{endTotal} pts</span>
+                                                            </div>
+
+                                                            <div className="flex items-start gap-3">
+                                                                {/* Shots */}
+                                                                <div className="flex-1 flex flex-wrap gap-1">
+                                                                    {end.shots.map((shot, shotIdx) => (
+                                                                        <span
+                                                                            key={shotIdx}
+                                                                            className={`inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded border ${getShotBadgeColor(shot)}`}
+                                                                            title={`Shot ${shotIdx + 1}: ${formatShotValue(shot)}`}
+                                                                        >
+                                                                            {formatShotValue(shot)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+
+                                                                {/* Photo Thumbnail */}
+                                                                {photoUrl && (
+                                                                    <button
+                                                                        onClick={() => setEnlargedPhoto(photoUrl)}
+                                                                        className="shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-stone-200 hover:border-forest transition-colors"
+                                                                    >
+                                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                        <img
+                                                                            src={photoUrl}
+                                                                            alt={`End ${endIdx + 1} target`}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )
@@ -174,6 +307,30 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                     <p className="mt-2 text-sm text-stone-500 text-center max-w-[250px]">
                         {selectedDate ? "No practice logged on this date." : "Get started by logging your first practice."}
                     </p>
+                </div>
+            )}
+
+            {/* Enlarged Photo Modal */}
+            {enlargedPhoto && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={() => setEnlargedPhoto(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh]">
+                        <button
+                            onClick={() => setEnlargedPhoto(null)}
+                            className="absolute -top-12 right-0 p-2 text-white hover:text-stone-300 transition-colors"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={enlargedPhoto}
+                            alt="Enlarged target"
+                            className="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
                 </div>
             )}
         </div>
