@@ -78,8 +78,6 @@ export default async function Home() {
 
         <DashboardAnalytics userId={user.id} />
 
-        <DashboardAnalytics userId={user.id} />
-
         <DashboardClient initialSessions={sessions || []} />
       </main>
     </div>

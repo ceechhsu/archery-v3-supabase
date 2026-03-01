@@ -105,15 +105,17 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
         // Load from cache if exists
         const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
         const cached = localStorage.getItem(draftKey)
-        if (cached) {
+
+        // Only load from cache if we are NOT editing a pre-existing session OR if we literally already have a cache for this exact edit session
+        if (cached && (!initialSession || localStorage.getItem(`archery_v3_draft_${initialSession.id}`))) {
             try {
                 const parsed = JSON.parse(cached)
                 // We can't restore File objects from JSON easily, so we just restore scores/dates
                 if (parsed.distance) setDistance(parsed.distance)
-                setDate(parsed.date || new Date().toISOString().split('T')[0])
-                setNotes(parsed.notes || '')
-                setShotsPerEnd(parsed.shotsPerEnd || (parsed.ends?.[0]?.shots?.length) || 5)
-                if (parsed.ends) {
+                if (parsed.date) setDate(parsed.date)
+                if (parsed.notes) setNotes(parsed.notes)
+                if (parsed.shotsPerEnd) setShotsPerEnd(parsed.shotsPerEnd)
+                if (parsed.ends && parsed.ends.length > 0) {
                     // Re-attach empty file states since they don't stringify
                     setEnds(parsed.ends.map((e: End) => ({ ...e, photoFile: null, photoPreview: null })))
                 }
@@ -126,7 +128,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
         }
-    }, [])
+    }, [initialSession])
 
     // Auto-save to local storage on change
     useEffect(() => {
