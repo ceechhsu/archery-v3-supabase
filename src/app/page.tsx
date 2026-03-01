@@ -44,9 +44,9 @@ export default async function Home() {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-md  ">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 ">
-            Archery Log
-          </h1>
+          <Link href="/" className="text-xl font-bold tracking-tight text-zinc-900 hover:text-zinc-600 transition-colors">
+            ArrowLog
+          </Link>
           <form action={signOut}>
             <button
               type="submit"

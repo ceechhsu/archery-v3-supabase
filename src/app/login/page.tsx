@@ -6,7 +6,7 @@ export default function LoginPage() {
             <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl ring-1 ring-zinc-200  ">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold tracking-tight text-zinc-900 ">
-                        Archery Log
+                        ArrowLog
                     </h1>
                     <p className="text-sm text-zinc-500  mt-2">
                         Track your progress, ends, and shots.

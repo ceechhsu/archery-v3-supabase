@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Archery Log",
+  title: "ArrowLog",
   description: "Track your archery progress and scores over time.",
   manifest: "/manifest.json",
 };

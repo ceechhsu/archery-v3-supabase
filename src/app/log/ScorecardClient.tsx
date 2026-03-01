@@ -24,6 +24,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const [distance, setDistance] = useState<string>('')
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState('')
     const [shotsPerEnd, setShotsPerEnd] = useState(5)
@@ -46,6 +47,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
             try {
                 const parsed = JSON.parse(cached)
                 // We can't restore File objects from JSON easily, so we just restore scores/dates
+                if (parsed.distance) setDistance(parsed.distance)
                 setDate(parsed.date || new Date().toISOString().split('T')[0])
                 setNotes(parsed.notes || '')
                 setShotsPerEnd(parsed.shotsPerEnd || (parsed.ends?.[0]?.shots?.length) || 5)
@@ -68,8 +70,8 @@ export function ScorecardClient({ userId }: { userId: string }) {
     useEffect(() => {
         // Exclude File objects before stringifying
         const cacheableEnds = ends.map(e => ({ id: e.id, shots: e.shots }))
-        localStorage.setItem('archery_v3_draft', JSON.stringify({ date, notes, shotsPerEnd, ends: cacheableEnds }))
-    }, [date, notes, shotsPerEnd, ends])
+        localStorage.setItem('archery_v3_draft', JSON.stringify({ distance, date, notes, shotsPerEnd, ends: cacheableEnds }))
+    }, [distance, date, notes, shotsPerEnd, ends])
 
     // Modifer for Shots per End
     const handleShotsPerEndChange = (newTotal: number) => {
@@ -88,6 +90,11 @@ export function ScorecardClient({ userId }: { userId: string }) {
 
     // Scoring Logic
     const handleScoreChange = (endIndex: number, shotIndex: number, val: string) => {
+        if (!distance) {
+            alert("Please enter the Distance (M) before logging your scores.")
+            return
+        }
+
         const newEnds = [...ends]
         let score: number | null = null
 
@@ -176,7 +183,8 @@ export function ScorecardClient({ userId }: { userId: string }) {
                 .insert({
                     user_id: userId,
                     session_date: date,
-                    notes: notes
+                    notes: notes,
+                    distance: distance ? parseInt(distance) : null
                 })
                 .select()
                 .single()
@@ -257,6 +265,18 @@ export function ScorecardClient({ userId }: { userId: string }) {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
+                            Distance (M)
+                        </label>
+                        <input
+                            type="number"
+                            value={distance}
+                            onChange={(e) => setDistance(e.target.value)}
+                            placeholder="e.g. 18"
+                            className="w-full h-[42px] rounded-xl border-zinc-300 bg-transparent px-4 font-medium text-zinc-900 ring-1 ring-zinc-200 focus:border-zinc-500 focus:ring-zinc-500 transition-all placeholder:text-zinc-300"
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
                             Date
                         </label>
                         <input
@@ -288,7 +308,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
                             </button>
                         </div>
                     </div>
-                    <div className="sm:col-span-2 lg:col-span-3 lg:mt-2">
+                    <div className="sm:col-span-full">
                         <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
                             Notes (Optional)
                         </label>
