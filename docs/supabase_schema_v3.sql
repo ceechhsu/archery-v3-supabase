@@ -89,21 +89,25 @@ WITH CHECK (
 );
 
 -- 4. Storage Bucket Setup
--- NOTE: In Supabase dashboard, you may need to manually create the bucket 'session_photos' as a private bucket, 
+-- NOTE: In Supabase dashboard, you may need to manually create the bucket 'session_photos' as a public bucket, 
 -- or you can use the SQL below if running on raw postgres with storage schema available.
 
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('session_photos', 'session_photos', false)
+VALUES ('session_photos', 'session_photos', true)
 ON CONFLICT DO NOTHING;
 
--- Storage Policies for session_photos (Only owner can read/write)
+-- Storage Policies for session_photos (Public bucket with folder-based ownership)
+-- The bucket is public so photos can be viewed directly via URL
+-- RLS policies ensure users can only modify their own photos via folder path structure
+
 CREATE POLICY "Users can upload their own photos"
 ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'session_photos' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY "Users can read their own photos"
+-- Allow public read access (photos are accessible via direct URL)
+CREATE POLICY "Allow public read access to photos"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'session_photos' AND auth.uid()::text = (storage.foldername(name))[1]);
+USING (bucket_id = 'session_photos');
 
 CREATE POLICY "Users can delete their own photos"
 ON storage.objects FOR DELETE
