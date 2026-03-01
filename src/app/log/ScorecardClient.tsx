@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Plus, Minus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save } from 'lucide-react'
@@ -24,6 +24,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const distanceRef = useRef<HTMLInputElement>(null)
     const [distance, setDistance] = useState<string>('')
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState('')
@@ -31,6 +32,9 @@ export function ScorecardClient({ userId }: { userId: string }) {
     const [ends, setEnds] = useState<End[]>([
         { id: crypto.randomUUID(), shots: Array(5).fill({ score: null }), photoFile: null, photoPreview: null },
     ])
+
+    // Active Input tracking for Custom Keypad
+    const [activeInput, setActiveInput] = useState<{ endIdx: number; shotIdx: number } | null>(null)
 
     // Offline Detection & Local Storage Cache
     useEffect(() => {
@@ -90,11 +94,6 @@ export function ScorecardClient({ userId }: { userId: string }) {
 
     // Scoring Logic
     const handleScoreChange = (endIndex: number, shotIndex: number, val: string) => {
-        if (!distance) {
-            alert("Please enter the Distance (M) before logging your scores.")
-            return
-        }
-
         const newEnds = [...ends]
         let score: number | null = null
 
@@ -109,6 +108,63 @@ export function ScorecardClient({ userId }: { userId: string }) {
 
         newEnds[endIndex].shots[shotIndex] = { score }
         setEnds(newEnds)
+    }
+
+    // Custom Keypad Actions
+    const handleKeypadPress = (val: string) => {
+        if (!activeInput) return
+
+        handleScoreChange(activeInput.endIdx, activeInput.shotIdx, val)
+
+        // Auto Advance strictly across valid shots
+        let nextEnd = activeInput.endIdx
+        let nextShot = activeInput.shotIdx + 1
+
+        if (nextShot >= shotsPerEnd) {
+            nextEnd++
+            nextShot = 0
+            if (nextEnd >= ends.length) {
+                // Stay on the last box, just hide keypad to confirm finish
+                setActiveInput(null)
+                return
+            }
+        }
+        setActiveInput({ endIdx: nextEnd, shotIdx: nextShot })
+    }
+
+    const handleBackspace = () => {
+        if (!activeInput) return
+
+        handleScoreChange(activeInput.endIdx, activeInput.shotIdx, '')
+
+        // Move back
+        let prevEnd = activeInput.endIdx
+        let prevShot = activeInput.shotIdx - 1
+
+        if (prevShot < 0) {
+            prevEnd--
+            if (prevEnd < 0) return // Stay at start
+            prevShot = shotsPerEnd - 1
+        }
+        setActiveInput({ endIdx: prevEnd, shotIdx: prevShot })
+    }
+
+    const keypadColors = (val: string) => {
+        switch (val) {
+            case 'X':
+            case '10':
+            case '9': return 'bg-[#ffe142] text-yellow-950 border-none'; // Gold
+            case '8':
+            case '7': return 'bg-[#f03224] text-white border-none'; // Red
+            case '6':
+            case '5': return 'bg-[#3eb6e6] text-white border-none'; // Blue
+            case '4':
+            case '3': return 'bg-[#1b1918] text-white border-none'; // Black
+            case '2':
+            case '1': return 'bg-white text-zinc-900 border-2 border-zinc-200'; // White
+            case 'M': return 'bg-zinc-200 text-zinc-600 border-none'; // Miss
+            default: return 'bg-zinc-200 text-zinc-900';
+        }
     }
 
     const addEnd = () => {
@@ -268,6 +324,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
                             Distance (M)
                         </label>
                         <input
+                            ref={distanceRef}
                             type="number"
                             value={distance}
                             onChange={(e) => setDistance(e.target.value)}
@@ -418,18 +475,31 @@ export function ScorecardClient({ userId }: { userId: string }) {
                                     className="grid gap-1 sm:gap-2 h-full items-center"
                                     style={{ gridTemplateColumns: `repeat(${shotsPerEnd}, minmax(0, 1fr))` }}
                                 >
-                                    {end.shots.map((shot, shotIdx) => (
-                                        <input
-                                            key={shotIdx}
-                                            type="text"
-                                            inputMode="numeric"
-                                            maxLength={2}
-                                            value={shot.score === null ? '' : shot.score === 10 ? 'X' : shot.score === 0 ? 'M' : shot.score}
-                                            onChange={(e) => handleScoreChange(endIdx, shotIdx, e.target.value)}
-                                            placeholder="-"
-                                            className={`h-12 w-full rounded-xl border-zinc-200 bg-zinc-50 text-center font-bold text-zinc-900 ring-1 ring-zinc-200 focus:bg-white focus:ring-2 focus:ring-zinc-900 transition-all placeholder:font-normal placeholder:text-zinc-300 ${shotsPerEnd > 6 ? 'text-base px-0' : 'text-lg'}`}
-                                        />
-                                    ))}
+                                    {end.shots.map((shot, shotIdx) => {
+                                        const isActive = activeInput?.endIdx === endIdx && activeInput?.shotIdx === shotIdx;
+                                        return (
+                                            <button
+                                                key={shotIdx}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!distance) {
+                                                        alert("Please enter the Distance (M) before logging your scores.")
+                                                        distanceRef.current?.focus()
+                                                        return
+                                                    }
+                                                    setActiveInput({ endIdx, shotIdx })
+                                                }}
+                                                className={`flex h-12 w-full items-center justify-center rounded-xl border-zinc-200 font-bold ring-1 ring-zinc-200 transition-all duration-200 ${isActive
+                                                    ? 'bg-zinc-900 text-white ring-2 ring-zinc-900 shadow-md scale-105 z-10'
+                                                    : 'bg-zinc-50 text-zinc-900 hover:bg-zinc-100'
+                                                    } ${shotsPerEnd > 6 ? 'text-base' : 'text-lg'}`}
+                                            >
+                                                {shot.score === null
+                                                    ? <span className="text-zinc-300 font-normal">-</span>
+                                                    : shot.score === 10 ? 'X' : shot.score === 0 ? 'M' : shot.score}
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                                 <p className="mt-2 text-xs text-zinc-400  text-center sm:text-left">
                                     Enter 0-10, X (10), or M (0)
@@ -449,44 +519,94 @@ export function ScorecardClient({ userId }: { userId: string }) {
                 Add End
             </button>
 
-            {/* Footer Totals & Save */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-200 bg-white p-4 shadow-lg  ">
-                <div className="mx-auto max-w-3xl">
-                    {error && (
-                        <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600  ">
-                            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                            <p>{error}</p>
-                        </div>
-                    )}
+            {/* Helper padding to ensure content isn't hidden behind the sticky footer/keypad */}
+            {activeInput ? <div className="h-[360px]" /> : <div className="h-[120px]" />}
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex gap-6">
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Total Score</p>
-                                <p className="text-2xl font-bold text-zinc-900 ">{sessionTotal}</p>
+            {/* Footer Totals, Save & Keypad */}
+            <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-200 bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-20 transition-transform duration-300">
+                {/* Custom Archery Keypad (Shows when an input is active) */}
+                {activeInput && (
+                    <div className="border-b border-zinc-100 bg-zinc-50 p-3 sm:p-4">
+                        <div className="mx-auto max-w-3xl">
+                            <div className="flex justify-between items-center mb-3 px-1">
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                    Scoring <span className="text-zinc-400 font-normal ml-1">End {activeInput.endIdx + 1}, Arrow {activeInput.shotIdx + 1}</span>
+                                </span>
+                                <button
+                                    onClick={() => setActiveInput(null)}
+                                    className="text-xs font-bold text-zinc-500 uppercase px-3 py-1.5 bg-zinc-200 rounded-lg hover:bg-zinc-300 transition-colors"
+                                >
+                                    Done
+                                </button>
                             </div>
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Arrows</p>
-                                <p className="text-2xl font-bold text-zinc-900 ">{totalArrows}</p>
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                {['X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M'].map(val => (
+                                    <button
+                                        key={val}
+                                        onClick={() => handleKeypadPress(val)}
+                                        className={`flex h-12 sm:h-14 items-center justify-center rounded-xl text-xl font-black shadow-sm active:scale-95 transition-all ${keypadColors(val)}`}
+                                    >
+                                        {val}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+                                <button
+                                    onClick={handleBackspace}
+                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-200 font-bold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-300 active:scale-95"
+                                >
+                                    <Trash2 className="h-5 w-5" /> Backspace
+                                </button>
+                                <button
+                                    onClick={() => setActiveInput(null)}
+                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-900 font-bold text-white shadow-sm transition-colors hover:bg-zinc-800 active:scale-95"
+                                >
+                                    Close Keypad
+                                </button>
                             </div>
                         </div>
+                    </div>
+                )}
 
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving || !isOnline}
-                            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-zinc-800   :bg-zinc-100 transition-all"
-                        >
-                            {isSaving ? (
-                                "Saving..."
-                            ) : !isOnline ? (
-                                "Offline"
-                            ) : (
-                                <>
-                                    <Save className="h-5 w-5" />
-                                    Save Session
-                                </>
-                            )}
-                        </button>
+                {/* Standard Action Bar */}
+                <div className="p-4 bg-white pb-safe">
+                    <div className="mx-auto max-w-3xl">
+                        {error && (
+                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600  ">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                <p>{error}</p>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                            <div className="flex gap-6">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Total Score</p>
+                                    <p className="text-2xl font-bold text-zinc-900 ">{sessionTotal}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Arrows</p>
+                                    <p className="text-2xl font-bold text-zinc-900 ">{totalArrows}</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving || !isOnline}
+                                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-zinc-800   :bg-zinc-100 transition-all"
+                            >
+                                {isSaving ? (
+                                    "Saving..."
+                                ) : !isOnline ? (
+                                    "Offline"
+                                ) : (
+                                    <>
+                                        <Save className="h-5 w-5" />
+                                        Save Session
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
