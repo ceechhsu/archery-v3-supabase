@@ -79,6 +79,18 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
     // Active Input tracking for Custom Keypad
     const [activeInput, setActiveInput] = useState<{ endIdx: number; shotIdx: number } | null>(null)
 
+    // Auto-scroll active input into view so keypad doesn't hide it
+    useEffect(() => {
+        if (activeInput) {
+            setTimeout(() => {
+                const el = document.getElementById(`shot-box-${activeInput.endIdx}-${activeInput.shotIdx}`)
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+            }, 50)
+        }
+    }, [activeInput])
+
     // Offline Detection & Local Storage Cache
     useEffect(() => {
         setIsOnline(navigator.onLine)
@@ -521,9 +533,9 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                         </div>
                                     </label>
                                 ) : (
-                                    <div className="relative flex h-24 w-24 sm:w-28 flex-col overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300  bg-zinc-50  group hover:border-zinc-400 :border-zinc-600 transition-colors shadow-sm">
+                                    <div className="relative flex h-24 w-32 sm:w-36 flex-row overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300  bg-zinc-50  group hover:border-zinc-400 :border-zinc-600 transition-colors shadow-sm">
                                         {/* Camera Target */}
-                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center border-b border-zinc-200/50 bg-transparent hover:bg-zinc-100  :bg-zinc-800/80 transition-colors">
+                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center border-r border-zinc-200/50 bg-transparent hover:bg-zinc-100  :bg-zinc-800/80 transition-colors">
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -573,6 +585,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                         return (
                                             <button
                                                 key={shotIdx}
+                                                id={`shot-box-${endIdx}-${shotIdx}`}
                                                 type="button"
                                                 onClick={() => {
                                                     if (!distance) {
