@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from './actions/auth'
 import { DashboardClient } from './components/DashboardClient'
+import { NavigationTabBar } from './components/NavigationTabBar'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -74,6 +75,7 @@ export default async function Home() {
 
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
+        <NavigationTabBar />
         <DashboardClient initialSessions={sessions || []} />
       </main >
     </div >

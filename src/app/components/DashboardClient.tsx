@@ -64,17 +64,6 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
     return (
         <div className="mx-auto max-w-3xl px-4 py-8 pb-24">
 
-            <Link
-                href="/log"
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-4 text-base font-semibold text-white shadow-sm hover:bg-zinc-800   :bg-zinc-200 transition-colors"
-                onClick={() => {
-                    // Quick fix for the "New Session Draft" bug: clear the draft cache explicitly.
-                    localStorage.removeItem('archery_v3_draft_new')
-                }}
-            >
-                + Log New Session
-            </Link>
-
             {/* Interactive Calendar View */}
             <DashboardCalendar
                 sessionDates={sessionDates}
