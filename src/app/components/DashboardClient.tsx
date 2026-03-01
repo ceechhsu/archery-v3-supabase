@@ -121,24 +121,6 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                 key={session.id}
                                 className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md relative group"
                             >
-                                {/* Edit & Delete Actions */}
-                                <div className="absolute right-3 top-3 flex gap-1 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity">
-                                    <Link
-                                        href={`/log?edit=${session.id}`}
-                                        className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-                                        title="Edit Session"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Link>
-                                    <button
-                                        onClick={() => handleDelete(session.id)}
-                                        className="rounded-full p-2 text-zinc-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                                        title="Delete Session"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
-
                                 <div className="p-5">
                                     <div className="flex items-start justify-between">
                                         <div>
@@ -158,7 +140,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                             </p>
                                         </div>
 
-                                        <div className="text-right pr-12">
+                                        <div className="text-right">
                                             <p className="text-sm font-medium text-zinc-500 ">
                                                 Avg/Arrow
                                             </p>
@@ -168,10 +150,28 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 flex items-center gap-4 text-sm text-zinc-500 ">
-                                        <div>{totalArrows} Arrows</div>
-                                        <div>•</div>
-                                        <div>{session.ends?.length || 0} Ends</div>
+                                    <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4">
+                                        <div className="flex items-center gap-4 text-sm text-zinc-500 ">
+                                            <div>{totalArrows} Arrows</div>
+                                            <div>•</div>
+                                            <div>{session.ends?.length || 0} Ends</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/log?edit=${session.id}`}
+                                                className="rounded-full bg-zinc-50 p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm"
+                                                title="Edit Session"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Link>
+                                            <button
+                                                onClick={() => handleDelete(session.id)}
+                                                className="rounded-full bg-zinc-50 p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm"
+                                                title="Delete Session"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
