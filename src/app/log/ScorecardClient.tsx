@@ -316,16 +316,13 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             let sessionId = initialSession?.id;
 
             // Build the session date timestamp
-            // For new sessions: use current time (now)
-            // For editing: use the selected date but keep original time if available
-            let sessionDateISO: string
-            if (!initialSession?.id) {
-                // New session - use actual current time
-                sessionDateISO = new Date().toISOString()
-            } else {
-                // Editing - construct from date input, use noon to avoid timezone issues
-                sessionDateISO = new Date(`${date}T12:00:00`).toISOString()
-            }
+            // Always use current time when saving (both new and edit)
+            // Combine the selected date with current time
+            const now = new Date()
+            const hours = String(now.getHours()).padStart(2, '0')
+            const minutes = String(now.getMinutes()).padStart(2, '0')
+            const seconds = String(now.getSeconds()).padStart(2, '0')
+            const sessionDateISO = new Date(`${date}T${hours}:${minutes}:${seconds}`).toISOString()
 
             if (sessionId) {
                 const { error: sessionError } = await supabase
