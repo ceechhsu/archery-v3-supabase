@@ -315,9 +315,17 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             // 1. Upsert Session
             let sessionId = initialSession?.id;
 
-            // Convert date to proper ISO timestamp with timezone
-            // Append noon time to avoid midnight boundary issues with timezones
-            const sessionDateISO = new Date(`${date}T12:00:00`).toISOString()
+            // Build the session date timestamp
+            // For new sessions: use current time (now)
+            // For editing: use the selected date but keep original time if available
+            let sessionDateISO: string
+            if (!initialSession?.id) {
+                // New session - use actual current time
+                sessionDateISO = new Date().toISOString()
+            } else {
+                // Editing - construct from date input, use noon to avoid timezone issues
+                sessionDateISO = new Date(`${date}T12:00:00`).toISOString()
+            }
 
             if (sessionId) {
                 const { error: sessionError } = await supabase
