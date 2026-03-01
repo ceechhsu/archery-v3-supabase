@@ -49,7 +49,9 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                     id: end.id,
                     end_index: end.end_index,
                     photo_url: end.photo_url,
-                    photoPreview: end.photo_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/session_photos/${end.photo_url}` : null,
+                    photoPreview: end.photo_url && process.env.NEXT_PUBLIC_SUPABASE_URL
+                        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/session_photos/${end.photo_url}`
+                        : null,
                     photoFile: null,
                     shots: end.shots
                         .sort((a, b) => a.shot_index - b.shot_index)
@@ -232,17 +234,17 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
         switch (val) {
             case 'X':
             case '10':
-            case '9': return 'bg-[#ffe142] text-yellow-950 border-none'; // Gold
+            case '9': return 'bg-[#ffe142] text-yellow-950 border-none shadow-sm'; // Gold
             case '8':
-            case '7': return 'bg-[#f03224] text-white border-none'; // Red
+            case '7': return 'bg-[#f03224] text-white border-none shadow-sm'; // Red
             case '6':
-            case '5': return 'bg-[#3eb6e6] text-white border-none'; // Blue
+            case '5': return 'bg-[#3eb6e6] text-white border-none shadow-sm'; // Blue
             case '4':
-            case '3': return 'bg-[#1b1918] text-white border-none'; // Black
+            case '3': return 'bg-[#1b1918] text-white border-none shadow-sm'; // Black
             case '2':
-            case '1': return 'bg-white text-zinc-900 border-2 border-zinc-200'; // White
-            case 'M': return 'bg-zinc-200 text-zinc-600 border-none'; // Miss
-            default: return 'bg-zinc-200 text-zinc-900';
+            case '1': return 'bg-white text-stone-800 border-2 border-stone-200 shadow-sm'; // White
+            case 'M': return 'bg-stone-200 text-stone-600 border-none shadow-sm'; // Miss
+            default: return 'bg-stone-200 text-stone-800';
         }
     }
 
@@ -427,10 +429,10 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
     return (
         <div className="space-y-6">
             {/* Session Meta */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                        <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
+                        <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Distance (M)
                         </label>
                         <input
@@ -439,44 +441,44 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                             value={distance}
                             onChange={(e) => setDistance(e.target.value)}
                             placeholder="e.g. 18"
-                            className="w-full h-[42px] rounded-xl border-zinc-300 bg-transparent px-4 font-medium text-zinc-900 ring-1 ring-zinc-200 focus:border-zinc-500 focus:ring-zinc-500 transition-all placeholder:text-zinc-300"
+                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all placeholder:text-stone-300"
                         />
                     </div>
                     <div>
-                        <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
+                        <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Date
                         </label>
                         <input
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className="w-full h-[42px] rounded-xl border-zinc-300 bg-transparent px-4 font-medium text-zinc-900 ring-1 ring-zinc-200 focus:border-zinc-500 focus:ring-zinc-500 transition-all"
+                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all"
                         />
                     </div>
                     <div>
-                        <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
+                        <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Arrows per End
                         </label>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => handleShotsPerEndChange(shotsPerEnd - 1)}
                                 disabled={shotsPerEnd <= 3}
-                                className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 text-zinc-600 transition-colors"
+                                className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 transition-colors"
                             >
                                 <Minus className="h-4 w-4" />
                             </button>
-                            <span className="w-10 text-center text-xl font-bold text-zinc-900">{shotsPerEnd}</span>
+                            <span className="w-10 text-center text-xl font-bold text-stone-800">{shotsPerEnd}</span>
                             <button
                                 onClick={() => handleShotsPerEndChange(shotsPerEnd + 1)}
                                 disabled={shotsPerEnd >= 12}
-                                className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 text-zinc-600 transition-colors"
+                                className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 transition-colors"
                             >
                                 <Plus className="h-4 w-4" />
                             </button>
                         </div>
                     </div>
                     <div className="sm:col-span-full">
-                        <label className="mb-2 block text-sm font-bold tracking-tight text-zinc-900">
+                        <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Notes (Optional)
                         </label>
                         <textarea
@@ -484,7 +486,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="How did it feel today? Any equipment changes?"
                             rows={2}
-                            className="w-full rounded-xl border-zinc-300 bg-transparent px-4 py-3 font-medium text-zinc-900 ring-1 ring-zinc-200 focus:border-zinc-500 focus:ring-zinc-500 transition-all resize-none"
+                            className="w-full rounded-xl border-stone-200 bg-transparent px-4 py-3 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all resize-none"
                         />
                     </div>
                 </div>
@@ -496,16 +498,16 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                     <div
                         key={end.id}
                         id={`end-block-${endIdx}`}
-                        className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm  "
+                        className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm"
                     >
-                        <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-4 py-3  ">
+                        <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50/50 px-4 py-3">
                             <div className="flex items-center gap-3">
-                                <h3 className="font-semibold text-zinc-900 ">
+                                <h3 className="font-semibold text-stone-800">
                                     End {endIdx + 1}
                                 </h3>
                                 {/* Minimalist Camera Controls in Header */}
-                                <div className="flex items-center gap-1 border-l border-zinc-300 pl-3">
-                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 transition-colors">
+                                <div className="flex items-center gap-1 border-l border-stone-300 pl-3">
+                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-stone-400 hover:bg-stone-200 hover:text-stone-600 transition-colors">
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -519,7 +521,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                         />
                                         <Camera className="h-4 w-4" />
                                     </label>
-                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 transition-colors">
+                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-stone-400 hover:bg-stone-200 hover:text-stone-600 transition-colors">
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -536,13 +538,13 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <span className="text-sm font-medium text-zinc-500 hidden sm:inline-block">
-                                    Total: <span className="text-zinc-900 ">{calculateEndTotal(end.shots)}</span>
+                                <span className="text-sm font-medium text-stone-500 hidden sm:inline-block">
+                                    Total: <span className="text-stone-800">{calculateEndTotal(end.shots)}</span>
                                 </span>
                                 {ends.length > 1 && (
                                     <button
                                         onClick={() => removeEnd(endIdx)}
-                                        className="text-red-500 hover:text-red-700 p-1"
+                                        className="text-terracotta hover:text-terracotta-light p-1 transition-colors"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
@@ -572,23 +574,23 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                                     }
                                                     setActiveInput({ endIdx, shotIdx })
                                                 }}
-                                                className={`flex h-12 w-full items-center justify-center rounded-xl border-zinc-200 font-bold ring-1 ring-zinc-200 transition-all duration-200 ${isActive
-                                                    ? 'bg-zinc-900 text-white ring-2 ring-zinc-900 shadow-md scale-105 z-10'
-                                                    : 'bg-zinc-50 text-zinc-900 hover:bg-zinc-100'
+                                                className={`flex h-12 w-full items-center justify-center rounded-xl border-stone-200 font-bold ring-1 ring-stone-200 transition-all duration-200 ${isActive
+                                                    ? 'bg-forest text-white ring-2 ring-forest shadow-md scale-105 z-10'
+                                                    : 'bg-stone-50 text-stone-800 hover:bg-stone-100'
                                                     } ${shotsPerEnd > 6 ? 'text-base' : 'text-lg'}`}
                                             >
                                                 {shot.score === null
-                                                    ? <span className="text-zinc-300 font-normal">-</span>
+                                                    ? <span className="text-stone-300 font-normal">-</span>
                                                     : shot.is_x ? 'X' : shot.is_m ? 'M' : shot.score}
                                             </button>
                                         )
                                     })}
                                 </div>
                                 <div className="mt-2 flex items-center justify-between">
-                                    <p className="text-xs text-zinc-400">
+                                    <p className="text-xs text-stone-400">
                                         Enter 0-10, X (10), or M (0)
                                     </p>
-                                    <span className="text-sm font-bold text-zinc-900 sm:hidden">
+                                    <span className="text-sm font-bold text-stone-800 sm:hidden">
                                         Total: {calculateEndTotal(end.shots)}
                                     </span>
                                 </div>
@@ -596,7 +598,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
 
                             {/* Full-width Photo Preview Block (Only visible if photo exists) */}
                             {end.photoPreview && (
-                                <div className="relative mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900">
+                                <div className="relative mt-2 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-900">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={end.photoPreview} alt="Target" className="max-h-64 w-full object-cover opacity-90" />
 
@@ -625,7 +627,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             {/* Add End Button */}
             <button
                 onClick={addEnd}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 py-4 font-medium text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900   :bg-zinc-900 :text-zinc-50 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-200 py-4 font-medium text-stone-500 hover:border-forest hover:text-forest hover:bg-forest/5 transition-all"
             >
                 <Plus className="h-5 w-5" />
                 Add End
@@ -635,18 +637,18 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             {activeInput ? <div className="h-[360px]" /> : <div className="h-[120px]" />}
 
             {/* Footer Totals, Save & Keypad */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-200 bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-20 transition-transform duration-300">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-stone-200 bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-20 transition-transform duration-300">
                 {/* Custom Archery Keypad (Shows when an input is active) */}
                 {activeInput && (
-                    <div className="border-b border-zinc-100 bg-zinc-50 p-3 sm:p-4">
+                    <div className="border-b border-stone-100 bg-stone-50 p-3 sm:p-4">
                         <div className="mx-auto max-w-3xl">
                             <div className="flex justify-between items-center mb-3 px-1">
-                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    Scoring <span className="text-zinc-400 font-normal ml-1">End {activeInput.endIdx + 1}, Arrow {activeInput.shotIdx + 1}</span>
+                                <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
+                                    Scoring <span className="text-stone-400 font-normal ml-1">End {activeInput.endIdx + 1}, Arrow {activeInput.shotIdx + 1}</span>
                                 </span>
                                 <button
                                     onClick={() => setActiveInput(null)}
-                                    className="text-xs font-bold text-zinc-500 uppercase px-3 py-1.5 bg-zinc-200 rounded-lg hover:bg-zinc-300 transition-colors"
+                                    className="text-xs font-bold text-stone-500 uppercase px-3 py-1.5 bg-stone-200 rounded-lg hover:bg-stone-300 transition-colors"
                                 >
                                     Done
                                 </button>
@@ -656,7 +658,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                     <button
                                         key={val}
                                         onClick={() => handleKeypadPress(val)}
-                                        className={`flex h-12 sm:h-14 items-center justify-center rounded-xl text-xl font-black shadow-sm active:scale-95 transition-all ${keypadColors(val)}`}
+                                        className={`flex h-12 sm:h-14 items-center justify-center rounded-xl text-xl font-black active:scale-95 transition-all ${keypadColors(val)}`}
                                     >
                                         {val}
                                     </button>
@@ -665,13 +667,13 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                             <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-2 sm:gap-3">
                                 <button
                                     onClick={handleBackspace}
-                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-200 font-bold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-300 active:scale-95"
+                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-stone-200 font-bold text-stone-700 shadow-sm transition-colors hover:bg-stone-300 active:scale-95"
                                 >
                                     <Trash2 className="h-5 w-5" /> Backspace
                                 </button>
                                 <button
                                     onClick={() => setActiveInput(null)}
-                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-900 font-bold text-white shadow-sm transition-colors hover:bg-zinc-800 active:scale-95"
+                                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-forest font-bold text-white shadow-sm transition-colors hover:bg-forest-dark active:scale-95"
                                 >
                                     Close Keypad
                                 </button>
@@ -684,7 +686,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                 <div className="p-4 bg-white pb-safe">
                     <div className="mx-auto max-w-3xl">
                         {error && (
-                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600  ">
+                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
                                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                                 <p>{error}</p>
                             </div>
@@ -693,19 +695,19 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                         <div className="flex items-center justify-between">
                             <div className="flex gap-6">
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Total Score</p>
-                                    <p className="text-2xl font-bold text-zinc-900 ">{sessionTotal}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Total Score</p>
+                                    <p className="text-2xl font-bold text-forest">{sessionTotal}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Arrows</p>
-                                    <p className="text-2xl font-bold text-zinc-900 ">{totalArrows}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Arrows</p>
+                                    <p className="text-2xl font-bold text-stone-800">{totalArrows}</p>
                                 </div>
                             </div>
 
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving || !isOnline}
-                                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-zinc-800   :bg-zinc-100 transition-all"
+                                className="flex items-center gap-2 rounded-xl bg-forest px-6 py-3 font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-forest-dark transition-all"
                             >
                                 {isSaving ? (
                                     "Saving..."

@@ -14,6 +14,7 @@ export interface Database {
                     id: string
                     user_id: string
                     session_date: string
+                    distance: number | null
                     notes: string | null
                     created_at: string
                     updated_at: string
@@ -22,6 +23,7 @@ export interface Database {
                     id?: string
                     user_id?: string
                     session_date?: string
+                    distance?: number | null
                     notes?: string | null
                     created_at?: string
                     updated_at?: string
@@ -30,6 +32,7 @@ export interface Database {
                     id?: string
                     user_id?: string
                     session_date?: string
+                    distance?: number | null
                     notes?: string | null
                     created_at?: string
                     updated_at?: string
@@ -64,6 +67,8 @@ export interface Database {
                     end_id: string
                     shot_index: number
                     score: number
+                    is_x: boolean
+                    is_m: boolean
                     created_at: string
                 }
                 Insert: {
@@ -71,6 +76,8 @@ export interface Database {
                     end_id: string
                     shot_index: number
                     score: number
+                    is_x?: boolean
+                    is_m?: boolean
                     created_at?: string
                 }
                 Update: {
@@ -78,6 +85,8 @@ export interface Database {
                     end_id?: string
                     shot_index?: number
                     score?: number
+                    is_x?: boolean
+                    is_m?: boolean
                     created_at?: string
                 }
             }

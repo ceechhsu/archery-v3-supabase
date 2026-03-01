@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2 } from 'lucide-react'
-import { isSameDay, parseISO } from 'date-fns'
+import { Pencil, Trash2, CalendarDays, Target } from 'lucide-react'
+import { isSameDay } from 'date-fns'
 import { DashboardCalendar } from './DashboardCalendar'
 import { createClient } from '@/utils/supabase/client'
 
@@ -62,8 +62,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
     }
 
     return (
-        <div className="mx-auto max-w-3xl px-4 py-8 pb-24">
-
+        <div>
             {/* Interactive Calendar View */}
             <DashboardCalendar
                 sessionDates={sessionDates}
@@ -74,7 +73,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
             />
 
             <div className="flex items-center justify-between mt-8 mb-6">
-                <h2 className="text-xl font-semibold text-zinc-900 ">
+                <h2 className="text-xl font-serif font-semibold text-stone-800">
                     {selectedDate
                         ? `Sessions for ${selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
                         : `Sessions in ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
@@ -82,7 +81,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                 {selectedDate && (
                     <button
                         onClick={() => setSelectedDate(undefined)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800 "
+                        className="text-sm font-medium text-forest hover:text-forest-dark transition-colors"
                     >
                         Show All
                     </button>
@@ -103,17 +102,17 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                         })
 
                         const avgScore = totalArrows > 0 ? (totalScore / totalArrows).toFixed(1) : '0'
-                        const dateObj = new Date(session.session_date)
 
                         return (
                             <div
                                 key={session.id}
-                                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md relative group"
+                                className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-stone-300 hover:shadow-md relative group"
                             >
                                 <div className="p-5">
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <p className="text-sm font-medium text-zinc-500 ">
+                                            <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
+                                                <CalendarDays className="h-4 w-4" />
                                                 {(() => {
                                                     const [y, m, d] = session.session_date.split('-')
                                                     const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
@@ -123,39 +122,38 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                         day: 'numeric',
                                                     })
                                                 })()}
-                                            </p>
-                                            <p className="mt-1 text-2xl font-semibold text-zinc-900 ">
-                                                {totalScore} <span className="text-sm font-normal text-zinc-500 ">pts</span>
+                                            </div>
+                                            <p className="mt-1 text-2xl font-bold text-forest">
+                                                {totalScore} <span className="text-sm font-normal text-stone-500">pts</span>
                                             </p>
                                         </div>
 
                                         <div className="text-right">
-                                            <p className="text-sm font-medium text-zinc-500 ">
+                                            <p className="text-sm font-medium text-stone-500">
                                                 Avg/Arrow
                                             </p>
-                                            <p className="mt-1 text-2xl font-semibold text-zinc-900 ">
+                                            <p className="mt-1 text-2xl font-bold text-stone-800">
                                                 {avgScore}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4">
-                                        <div className="flex items-center gap-4 text-sm text-zinc-500 ">
-                                            <div>{totalArrows} Arrows</div>
-                                            <div>•</div>
-                                            <div>{session.ends?.length || 0} Ends</div>
+                                    <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4">
+                                        <div className="flex items-center gap-4 text-sm text-stone-500">
+                                            <span className="bg-stone-100 px-2 py-1 rounded-md">{totalArrows} Arrows</span>
+                                            <span className="bg-stone-100 px-2 py-1 rounded-md">{session.ends?.length || 0} Ends</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Link
                                                 href={`/log?edit=${session.id}`}
-                                                className="rounded-full bg-zinc-50 p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm"
+                                                className="rounded-full bg-stone-100 p-2 text-stone-500 hover:bg-forest hover:text-white transition-colors shadow-sm"
                                                 title="Edit Session"
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </Link>
                                             <button
                                                 onClick={() => handleDelete(session.id)}
-                                                className="rounded-full bg-zinc-50 p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm"
+                                                className="rounded-full bg-stone-100 p-2 text-stone-500 hover:bg-terracotta hover:text-white transition-colors shadow-sm"
                                                 title="Delete Session"
                                             >
                                                 <Trash2 className="h-4 w-4" />
@@ -168,11 +166,12 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                     })}
                 </div>
             ) : (
-                <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/50  ">
-                    <h3 className="mt-4 text-lg font-semibold text-zinc-900 ">
+                <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-stone-100/50">
+                    <Target className="h-12 w-12 text-stone-300 mb-3" />
+                    <h3 className="text-lg font-serif font-semibold text-stone-800">
                         No sessions found
                     </h3>
-                    <p className="mt-2 text-sm text-zinc-500 text-center max-w-[250px]">
+                    <p className="mt-2 text-sm text-stone-500 text-center max-w-[250px]">
                         {selectedDate ? "No practice logged on this date." : "Get started by logging your first practice."}
                     </p>
                 </div>

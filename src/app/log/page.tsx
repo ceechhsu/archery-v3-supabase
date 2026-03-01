@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ScorecardClient } from './ScorecardClient'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Target } from 'lucide-react'
 
 export default async function LogSessionPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -53,18 +53,21 @@ export default async function LogSessionPage(props: {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 pb-24 ">
-            <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-md  ">
+        <div className="min-h-screen bg-stone-50 pb-24">
+            <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur-md shadow-sm">
                 <div className="mx-auto flex h-16 max-w-3xl items-center gap-4 px-4">
                     <Link
                         href="/"
-                        className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 :bg-zinc-800"
+                        className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-stone-100 transition-colors"
                     >
-                        <ArrowLeft className="h-5 w-5 text-zinc-900 " />
+                        <ArrowLeft className="h-5 w-5 text-stone-600" />
                     </Link>
-                    <h1 className="text-xl font-bold tracking-tight text-zinc-900 ">
-                        Log Session
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-terracotta" />
+                        <h1 className="text-xl font-serif font-bold tracking-tight text-stone-800">
+                            {initialSession ? 'Edit Session' : 'Log Session'}
+                        </h1>
+                    </div>
                 </div>
             </header>
 

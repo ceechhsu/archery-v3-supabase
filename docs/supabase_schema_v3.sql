@@ -7,6 +7,7 @@ CREATE TABLE public.sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     session_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    distance INTEGER,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
@@ -25,6 +26,8 @@ CREATE TABLE public.shots (
     end_id UUID NOT NULL REFERENCES public.ends(id) ON DELETE CASCADE,
     shot_index INTEGER NOT NULL,
     score INTEGER NOT NULL,
+    is_x BOOLEAN DEFAULT FALSE NOT NULL,
+    is_m BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
