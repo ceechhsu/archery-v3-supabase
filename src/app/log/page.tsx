@@ -17,16 +17,16 @@ export default async function LogSessionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 pb-24 dark:bg-zinc-950">
-            <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+        <div className="min-h-screen bg-zinc-50 pb-24 ">
+            <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-md  ">
                 <div className="mx-auto flex h-16 max-w-3xl items-center gap-4 px-4">
                     <Link
                         href="/"
-                        className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 :bg-zinc-800"
                     >
-                        <ArrowLeft className="h-5 w-5 text-zinc-900 dark:text-zinc-50" />
+                        <ArrowLeft className="h-5 w-5 text-zinc-900 " />
                     </Link>
-                    <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                    <h1 className="text-xl font-bold tracking-tight text-zinc-900 ">
                         Log Session
                     </h1>
                 </div>

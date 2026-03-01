@@ -2,13 +2,13 @@ import { signInWithGoogle } from "@/app/actions/auth";
 
 export default function LoginPage() {
     return (
-        <div className="flex min-h-screen items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <div className="flex min-h-screen items-center justify-center p-4 bg-zinc-50 ">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl ring-1 ring-zinc-200  ">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900 ">
                         Archery Log
                     </h1>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+                    <p className="text-sm text-zinc-500  mt-2">
                         Track your progress, ends, and shots.
                     </p>
                 </div>
@@ -16,7 +16,7 @@ export default function LoginPage() {
                 <form action={signInWithGoogle}>
                     <button
                         type="submit"
-                        className="flex w-full items-center justify-center gap-3 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-colors"
+                        className="flex w-full items-center justify-center gap-3 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900   :bg-zinc-100 transition-colors"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path

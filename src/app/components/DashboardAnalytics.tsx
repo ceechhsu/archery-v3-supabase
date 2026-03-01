@@ -36,7 +36,7 @@ export async function DashboardAnalytics({ userId }: { userId: string }) {
     const lifetimeAvg = totalArrows > 0 ? (totalScore / totalArrows).toFixed(1) : '0'
 
     return (
-        <div className="mb-8 grid grid-cols-3 gap-4 rounded-2xl bg-zinc-900 p-6 text-white shadow-lg dark:bg-zinc-900 dark:border dark:border-zinc-800">
+        <div className="mb-8 grid grid-cols-3 gap-4 rounded-2xl bg-zinc-900 p-6 text-white shadow-lg   ">
             <div>
                 <p className="text-sm font-medium text-zinc-400">Avg / Arrow</p>
                 <p className="mt-1 text-3xl font-bold">{lifetimeAvg}</p>
