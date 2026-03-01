@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { Plus, Trash2, Camera, AlertCircle, Save } from 'lucide-react'
+import { Plus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 
 // Types
@@ -292,28 +292,65 @@ export function ScorecardClient({ userId }: { userId: string }) {
 
                         <div className="p-4 flex flex-col sm:flex-row gap-6">
                             {/* Photo Upload Area */}
-                            <div className="flex-shrink-0">
-                                <label className="cursor-pointer group relative flex h-24 w-24 flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700/50 transition-all">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                                handlePhotoUpload(endIdx, e.target.files[0])
-                                            }
-                                        }}
-                                    />
-                                    {end.photoPreview ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={end.photoPreview} alt="Target" className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="text-center">
-                                            <Camera className="mx-auto h-6 w-6 text-zinc-400 group-hover:text-zinc-500 dark:text-zinc-500" />
-                                            <span className="mt-1 block text-[10px] font-medium text-zinc-500">Target</span>
+                            <div className="flex-shrink-0 sm:self-center">
+                                {end.photoPreview ? (
+                                    <label className="group relative flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-zinc-200 bg-zinc-900 shadow-sm transition-all focus-within:ring-2 focus-within:ring-zinc-900 dark:border-zinc-700">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    handlePhotoUpload(endIdx, e.target.files[0])
+                                                }
+                                            }}
+                                        />
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={end.photoPreview} alt="Target" className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100" />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity backdrop-blur-sm group-hover:opacity-100">
+                                            <Camera className="h-6 w-6 text-white" />
                                         </div>
-                                    )}
-                                </label>
+                                    </label>
+                                ) : (
+                                    <div className="relative flex h-24 w-24 sm:w-28 flex-col overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/20 group hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors shadow-sm">
+                                        {/* Camera Target */}
+                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center border-b border-zinc-200/50 bg-transparent hover:bg-zinc-100 dark:border-zinc-700/50 dark:hover:bg-zinc-800/80 transition-colors">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                className="sr-only"
+                                                onChange={(e) => {
+                                                    if (e.target.files && e.target.files[0]) {
+                                                        handlePhotoUpload(endIdx, e.target.files[0])
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                                <Camera className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                                                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">Take</span>
+                                            </div>
+                                        </label>
+
+                                        {/* Library Target */}
+                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="sr-only"
+                                                onChange={(e) => {
+                                                    if (e.target.files && e.target.files[0]) {
+                                                        handlePhotoUpload(endIdx, e.target.files[0])
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                                <ImageIcon className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                                                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">Lib</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Score Inputs */}
