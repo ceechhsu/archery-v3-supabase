@@ -75,11 +75,14 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
 
     const getLocalDateString = () => {
         const d = new Date()
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
     }
 
     const [distance, setDistance] = useState<string>(initialSession?.distance?.toString() || '')
-    const [date, setDate] = useState(initialSession?.session_date || getLocalDateString())
+    const [date, setDate] = useState(initialSession?.session_date?.split('T')[0] || getLocalDateString())
     const [notes, setNotes] = useState(initialSession?.notes || '')
     const [shotsPerEnd, setShotsPerEnd] = useState(initialSession?.ends?.[0]?.shots?.length || 5)
     const [ends, setEnds] = useState<End[]>(getDefaultEnds())
@@ -312,11 +315,15 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             // 1. Upsert Session
             let sessionId = initialSession?.id;
 
+            // Convert date to proper ISO timestamp with timezone
+            // Append noon time to avoid midnight boundary issues with timezones
+            const sessionDateISO = new Date(`${date}T12:00:00`).toISOString()
+
             if (sessionId) {
                 const { error: sessionError } = await supabase
                     .from('sessions')
                     .update({
-                        session_date: date,
+                        session_date: sessionDateISO,
                         notes: notes,
                         distance: distance ? parseInt(distance) : null,
                         updated_at: new Date().toISOString()
@@ -328,7 +335,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                     .from('sessions')
                     .insert({
                         user_id: userId,
-                        session_date: date,
+                        session_date: sessionDateISO,
                         notes: notes,
                         distance: distance ? parseInt(distance) : null
                     })
