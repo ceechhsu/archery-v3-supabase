@@ -493,29 +493,27 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                         className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm  "
                     >
                         <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-4 py-3  ">
-                            <h3 className="font-semibold text-zinc-900 ">
-                                End {endIdx + 1}
-                            </h3>
-                            <div className="flex items-center gap-4">
-                                <span className="text-sm font-medium text-zinc-500 ">
-                                    Total: <span className="text-zinc-900 ">{calculateEndTotal(end.shots)}</span>
-                                </span>
-                                {ends.length > 1 && (
-                                    <button
-                                        onClick={() => removeEnd(endIdx)}
-                                        className="text-red-500 hover:text-red-700 "
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="p-4 flex flex-col sm:flex-row gap-6">
-                            {/* Photo Upload Area */}
-                            <div className="flex-shrink-0 sm:self-center">
-                                {end.photoPreview ? (
-                                    <label className="group relative flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-zinc-200 bg-zinc-900 shadow-sm transition-all focus-within:ring-2 focus-within:ring-zinc-900 ">
+                            <div className="flex items-center gap-3">
+                                <h3 className="font-semibold text-zinc-900 ">
+                                    End {endIdx + 1}
+                                </h3>
+                                {/* Minimalist Camera Controls in Header */}
+                                <div className="flex items-center gap-1 border-l border-zinc-300 pl-3">
+                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 transition-colors">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    handlePhotoUpload(endIdx, e.target.files[0])
+                                                }
+                                            }}
+                                        />
+                                        <Camera className="h-4 w-4" />
+                                    </label>
+                                    <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 transition-colors">
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -526,58 +524,31 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                                 }
                                             }}
                                         />
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={end.photoPreview} alt="Target" className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100" />
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity backdrop-blur-sm group-hover:opacity-100">
-                                            <Camera className="h-6 w-6 text-white" />
-                                        </div>
+                                        <ImageIcon className="h-4 w-4" />
                                     </label>
-                                ) : (
-                                    <div className="relative flex h-24 w-32 sm:w-36 flex-row overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300  bg-zinc-50  group hover:border-zinc-400 :border-zinc-600 transition-colors shadow-sm">
-                                        {/* Camera Target */}
-                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center border-r border-zinc-200/50 bg-transparent hover:bg-zinc-100  :bg-zinc-800/80 transition-colors">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                capture="environment"
-                                                className="sr-only"
-                                                onChange={(e) => {
-                                                    if (e.target.files && e.target.files[0]) {
-                                                        handlePhotoUpload(endIdx, e.target.files[0])
-                                                    }
-                                                }}
-                                            />
-                                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                                <Camera className="h-4 w-4 text-zinc-500 " />
-                                                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-600 ">Take</span>
-                                            </div>
-                                        </label>
-
-                                        {/* Library Target */}
-                                        <label className="flex flex-1 cursor-pointer flex-col items-center justify-center bg-transparent hover:bg-zinc-100 :bg-zinc-800/80 transition-colors">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="sr-only"
-                                                onChange={(e) => {
-                                                    if (e.target.files && e.target.files[0]) {
-                                                        handlePhotoUpload(endIdx, e.target.files[0])
-                                                    }
-                                                }}
-                                            />
-                                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                                <ImageIcon className="h-4 w-4 text-zinc-500 " />
-                                                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-600 ">Lib</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                )}
+                                </div>
                             </div>
 
-                            {/* Score Inputs */}
-                            <div className="flex-1">
+                            <div className="flex items-center gap-4">
+                                <span className="text-sm font-medium text-zinc-500 hidden sm:inline-block">
+                                    Total: <span className="text-zinc-900 ">{calculateEndTotal(end.shots)}</span>
+                                </span>
+                                {ends.length > 1 && (
+                                    <button
+                                        onClick={() => removeEnd(endIdx)}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-4 flex flex-col gap-4">
+                            {/* Score Inputs (Full Width Now) */}
+                            <div className="w-full">
                                 <div
-                                    className="grid gap-1 sm:gap-2 h-full items-center"
+                                    className="grid gap-1 sm:gap-2 items-center"
                                     style={{ gridTemplateColumns: `repeat(${shotsPerEnd}, minmax(0, 1fr))` }}
                                 >
                                     {end.shots.map((shot, shotIdx) => {
@@ -607,10 +578,39 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                         )
                                     })}
                                 </div>
-                                <p className="mt-2 text-xs text-zinc-400  text-center sm:text-left">
-                                    Enter 0-10, X (10), or M (0)
-                                </p>
+                                <div className="mt-2 flex items-center justify-between">
+                                    <p className="text-xs text-zinc-400">
+                                        Enter 0-10, X (10), or M (0)
+                                    </p>
+                                    <span className="text-sm font-bold text-zinc-900 sm:hidden">
+                                        Total: {calculateEndTotal(end.shots)}
+                                    </span>
+                                </div>
                             </div>
+
+                            {/* Full-width Photo Preview Block (Only visible if photo exists) */}
+                            {end.photoPreview && (
+                                <div className="relative mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={end.photoPreview} alt="Target" className="max-h-64 w-full object-cover opacity-90" />
+
+                                    {/* Replace Photo Overlay */}
+                                    <label className="absolute right-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white shadow-sm backdrop-blur-md hover:bg-black/80 transition-colors">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    handlePhotoUpload(endIdx, e.target.files[0])
+                                                }
+                                            }}
+                                        />
+                                        <Camera className="h-5 w-5" />
+                                    </label>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

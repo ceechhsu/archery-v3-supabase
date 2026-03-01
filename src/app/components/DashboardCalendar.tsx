@@ -3,7 +3,15 @@
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/style.css'
 
-export function DashboardCalendar({ sessionDates }: { sessionDates: Date[] }) {
+export function DashboardCalendar({
+    sessionDates,
+    selectedDate,
+    onSelectDate
+}: {
+    sessionDates: Date[],
+    selectedDate?: Date,
+    onSelectDate?: (date: Date | undefined) => void
+}) {
     return (
         <div className="mt-8 mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm flex items-center justify-center">
             <style>{`
@@ -42,8 +50,12 @@ export function DashboardCalendar({ sessionDates }: { sessionDates: Date[] }) {
               }
             `}</style>
             <DayPicker
-                mode="multiple"
-                selected={sessionDates}
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                    // Toggle selection if the same date is clicked again
+                    if (onSelectDate) onSelectDate(date);
+                }}
                 modifiers={{ hasSession: sessionDates }}
                 modifiersClassNames={{ hasSession: 'rdp-day_hasSession' }}
                 className="w-full flex justify-center max-w-sm"
