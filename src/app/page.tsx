@@ -30,12 +30,15 @@ export default async function Home() {
       `
       id,
       session_date,
+      distance,
       notes,
       ends (
         id,
         photo_url,
         shots (
-          score
+          score,
+          is_x,
+          is_m
         )
       )
     `
