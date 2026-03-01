@@ -83,9 +83,11 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
     useEffect(() => {
         if (activeInput) {
             setTimeout(() => {
-                const el = document.getElementById(`shot-box-${activeInput.endIdx}-${activeInput.shotIdx}`)
+                // Scroll the entire End Block into view, not just the tiny box, so it clears the sticky header
+                const el = document.getElementById(`end-block-${activeInput.endIdx}`)
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    const y = el.getBoundingClientRect().top + window.scrollY - 80; // 80px offset for the sticky header
+                    window.scrollTo({ top: y, behavior: 'smooth' });
                 }
             }, 50)
         }
@@ -293,11 +295,6 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
 
     // Save to Supabase
     const handleSave = async () => {
-        if (!isOnline) {
-            setError("You are currently offline. Your progress is cached locally.")
-            return
-        }
-
         setIsSaving(true)
         setError(null)
 
@@ -490,6 +487,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                 {ends.map((end, endIdx) => (
                     <div
                         key={end.id}
+                        id={`end-block-${endIdx}`}
                         className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm  "
                     >
                         <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-4 py-3  ">
