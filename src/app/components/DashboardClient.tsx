@@ -21,14 +21,18 @@ type Session = {
 export function DashboardClient({ initialSessions }: { initialSessions: Session[] }) {
     const [sessions, setSessions] = useState<Session[]>(initialSessions)
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+    const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
     // Extract dates that contain at least one session for Calendar mapping
     const sessionDates = sessions.map(s => parseISO(s.session_date))
 
-    // Filter sessions by the selected date
+    // Filter sessions by the selected date. If no date is selected, filter by the current viewed month.
     const filteredSessions = selectedDate
         ? sessions.filter(s => isSameDay(parseISO(s.session_date), selectedDate))
-        : sessions
+        : sessions.filter(s => {
+            const date = parseISO(s.session_date)
+            return date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear()
+        })
 
     // Handle Delete Session
     const handleDelete = async (sessionId: string) => {
@@ -71,13 +75,15 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                 sessionDates={sessionDates}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
             />
 
-            <div className="mb-0 flex items-center justify-between mt-8 mb-6">
+            <div className="flex items-center justify-between mt-8 mb-6">
                 <h2 className="text-xl font-semibold text-zinc-900 ">
                     {selectedDate
                         ? `Sessions for ${selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : 'Recent Sessions'}
+                        : `Sessions in ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
                 </h2>
                 {selectedDate && (
                     <button

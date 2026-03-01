@@ -6,11 +6,15 @@ import 'react-day-picker/style.css'
 export function DashboardCalendar({
     sessionDates,
     selectedDate,
-    onSelectDate
+    onSelectDate,
+    currentMonth,
+    onMonthChange,
 }: {
     sessionDates: Date[],
     selectedDate?: Date,
-    onSelectDate?: (date: Date | undefined) => void
+    onSelectDate?: (date: Date | undefined) => void,
+    currentMonth?: Date,
+    onMonthChange?: (month: Date) => void,
 }) {
     return (
         <div className="mt-8 mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm flex items-center justify-center">
@@ -51,6 +55,8 @@ export function DashboardCalendar({
             `}</style>
             <DayPicker
                 mode="single"
+                month={currentMonth}
+                onMonthChange={onMonthChange}
                 selected={selectedDate}
                 onSelect={(date) => {
                     // Toggle selection if the same date is clicked again
