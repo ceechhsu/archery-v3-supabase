@@ -2,7 +2,6 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from './actions/auth'
-import { DashboardAnalytics } from './components/DashboardAnalytics'
 import { DashboardClient } from './components/DashboardClient'
 
 export default async function Home() {
@@ -55,11 +54,11 @@ export default async function Home() {
               ArrowLog
             </Link>
             <div className="flex items-center gap-2 border-l border-zinc-300 pl-3">
-              <span className="text-sm font-medium text-zinc-600 hidden sm:inline-block">Welcome, {firstName}</span>
               {avatarUrl && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={avatarUrl} alt={firstName} className="h-7 w-7 rounded-full shadow-sm" referrerPolicy="no-referrer" />
               )}
+              <span className="text-sm font-medium text-zinc-600 hidden sm:inline-block">Welcome {firstName}</span>
             </div>
           </div>
           <form action={signOut}>
@@ -75,11 +74,8 @@ export default async function Home() {
 
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
-
-        <DashboardAnalytics userId={user.id} />
-
         <DashboardClient initialSessions={sessions || []} />
-      </main>
-    </div>
+      </main >
+    </div >
   )
 }
