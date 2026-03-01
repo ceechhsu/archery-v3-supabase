@@ -7,17 +7,62 @@ import { Plus, Minus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save } fr
 import imageCompression from 'browser-image-compression'
 
 // Types
-type Shot = { score: number | null }
+type Shot = { id?: string, score: number | null, is_x?: boolean, is_m?: boolean }
 type End = {
     id: string
+    end_index?: number
     shots: Shot[]
     photoFile: File | null
     photoPreview: string | null
+    photo_url?: string | null
 }
 
-export function ScorecardClient({ userId }: { userId: string }) {
+type InitialSessionType = {
+    id: string
+    session_date: string
+    distance: number | null
+    notes: string | null
+    ends: {
+        id: string
+        end_index: number
+        photo_url: string | null
+        shots: {
+            id: string
+            shot_index: number
+            score: number | null
+            is_x: boolean
+            is_m: boolean
+        }[]
+    }[]
+}
+
+export function ScorecardClient({ userId, initialSession }: { userId: string, initialSession?: InitialSessionType | null }) {
     const router = useRouter()
     const supabase = createClient()
+
+    // State Initialization Handler
+    const getDefaultEnds = (): End[] => {
+        if (initialSession && initialSession.ends && initialSession.ends.length > 0) {
+            return initialSession.ends
+                .sort((a, b) => a.end_index - b.end_index)
+                .map((end) => ({
+                    id: end.id,
+                    end_index: end.end_index,
+                    photo_url: end.photo_url,
+                    photoPreview: end.photo_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/session_photos/${end.photo_url}` : null,
+                    photoFile: null,
+                    shots: end.shots
+                        .sort((a, b) => a.shot_index - b.shot_index)
+                        .map((s) => ({
+                            id: s.id,
+                            score: s.score,
+                            is_x: s.is_x,
+                            is_m: s.is_m
+                        }))
+                }))
+        }
+        return [{ id: crypto.randomUUID(), shots: Array(5).fill({ score: null }), photoFile: null, photoPreview: null }]
+    }
 
     // State
     const [isOnline, setIsOnline] = useState(true)
@@ -25,13 +70,11 @@ export function ScorecardClient({ userId }: { userId: string }) {
     const [error, setError] = useState<string | null>(null)
 
     const distanceRef = useRef<HTMLInputElement>(null)
-    const [distance, setDistance] = useState<string>('')
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-    const [notes, setNotes] = useState('')
-    const [shotsPerEnd, setShotsPerEnd] = useState(5)
-    const [ends, setEnds] = useState<End[]>([
-        { id: crypto.randomUUID(), shots: Array(5).fill({ score: null }), photoFile: null, photoPreview: null },
-    ])
+    const [distance, setDistance] = useState<string>(initialSession?.distance?.toString() || '')
+    const [date, setDate] = useState(initialSession?.session_date ? new Date(initialSession.session_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
+    const [notes, setNotes] = useState(initialSession?.notes || '')
+    const [shotsPerEnd, setShotsPerEnd] = useState(initialSession?.ends?.[0]?.shots?.length || 5)
+    const [ends, setEnds] = useState<End[]>(getDefaultEnds())
 
     // Active Input tracking for Custom Keypad
     const [activeInput, setActiveInput] = useState<{ endIdx: number; shotIdx: number } | null>(null)
@@ -96,17 +139,29 @@ export function ScorecardClient({ userId }: { userId: string }) {
     const handleScoreChange = (endIndex: number, shotIndex: number, val: string) => {
         const newEnds = [...ends]
         let score: number | null = null
+        let is_x = false
+        let is_m = false
 
-        if (val.toUpperCase() === 'X' || val === '10') score = 10
-        else if (val.toUpperCase() === 'M' || val === '0') score = 0
+        if (val.toUpperCase() === 'X' || val === '10') {
+            score = 10
+            is_x = val.toUpperCase() === 'X'
+        }
+        else if (val.toUpperCase() === 'M' || val === '0') {
+            score = 0
+            is_m = val.toUpperCase() === 'M'
+        }
         else {
             const parsed = parseInt(val)
             if (!isNaN(parsed) && parsed >= 0 && parsed <= 10) score = parsed
         }
 
-        if (val === '') score = null
+        if (val === '') {
+            score = null
+            is_x = false
+            is_m = false
+        }
 
-        newEnds[endIndex].shots[shotIndex] = { score }
+        newEnds[endIndex].shots[shotIndex] = { score, is_x, is_m }
         setEnds(newEnds)
     }
 
@@ -233,21 +288,35 @@ export function ScorecardClient({ userId }: { userId: string }) {
         setError(null)
 
         try {
-            // 1. Create Session
-            const { data: session, error: sessionError } = await supabase
-                .from('sessions')
-                .insert({
-                    user_id: userId,
-                    session_date: date,
-                    notes: notes,
-                    distance: distance ? parseInt(distance) : null
-                })
-                .select()
-                .single()
+            // 1. Upsert Session
+            let sessionId = initialSession?.id;
 
-            if (sessionError) throw sessionError
+            if (sessionId) {
+                const { error: sessionError } = await supabase
+                    .from('sessions')
+                    .update({
+                        session_date: date,
+                        notes: notes,
+                        distance: distance ? parseInt(distance) : null,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', sessionId)
+                if (sessionError) throw sessionError
+            } else {
+                const { data: session, error: sessionError } = await supabase
+                    .from('sessions')
+                    .insert({
+                        user_id: userId,
+                        session_date: date,
+                        notes: notes,
+                        distance: distance ? parseInt(distance) : null
+                    })
+                    .select()
+                    .single()
 
-            const sessionId = session.id
+                if (sessionError) throw sessionError
+                sessionId = session.id
+            }
 
             // 2. Process Ends
             for (let i = 0; i < ends.length; i++) {
@@ -271,27 +340,48 @@ export function ScorecardClient({ userId }: { userId: string }) {
                     photo_url = fileName
                 }
 
-                // 4. Create End Record
-                const { data: endRecord, error: endError } = await supabase
-                    .from('ends')
-                    .insert({
-                        session_id: sessionId,
-                        end_index: i,
-                        photo_url: photo_url
-                    })
-                    .select()
-                    .single()
+                // 4. Upsert End Record
+                let endRecordId = end.id
+                // Determine if it exists in DB by checking if the id came from the UUID generator or DB
+                const isExistingEnd = initialSession?.ends?.find((e) => e.id === endRecordId)
 
-                if (endError) throw endError
+                if (!isExistingEnd) {
+                    const { data: newEndRecord, error: endError } = await supabase
+                        .from('ends')
+                        .insert({
+                            session_id: sessionId,
+                            end_index: i,
+                            photo_url: photo_url
+                        })
+                        .select()
+                        .single()
 
-                // 5. Create Shots
+                    if (endError) throw endError
+                    endRecordId = newEndRecord.id
+                } else if (photo_url) {
+                    // Update only if we have a new photo
+                    const { error: endError } = await supabase
+                        .from('ends')
+                        .update({ photo_url: photo_url })
+                        .eq('id', endRecordId)
+                    if (endError) throw endError
+                }
+
+                // 5. Upsert Shots (To keep things clean during edits, just wipe existing shots for this end and recreate)
+                // This guarantees we don't end up with dangling shots if the user reduced shots-per-end
+                if (isExistingEnd) {
+                    await supabase.from('shots').delete().eq('end_id', endRecordId)
+                }
+
                 const validShots = end.shots
                     .map((shot, shotIdx) => ({
-                        end_id: endRecord.id,
+                        end_id: endRecordId,
                         shot_index: shotIdx,
-                        score: shot.score ?? 0 // default empty shots to 0 or we could filter them out
+                        score: shot.score ?? 0,
+                        is_x: shot.is_x ?? false,
+                        is_m: shot.is_m ?? false
                     }))
-                    .filter(s => end.shots[s.shot_index].score !== null) // Only save shots that were entered
+                    .filter(s => end.shots[s.shot_index].score !== null)
 
                 if (validShots.length > 0) {
                     const { error: shotsError } = await supabase
@@ -496,7 +586,7 @@ export function ScorecardClient({ userId }: { userId: string }) {
                                             >
                                                 {shot.score === null
                                                     ? <span className="text-zinc-300 font-normal">-</span>
-                                                    : shot.score === 10 ? 'X' : shot.score === 0 ? 'M' : shot.score}
+                                                    : shot.is_x ? 'X' : shot.is_m ? 'M' : shot.score}
                                             </button>
                                         )
                                     })}

@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { ScorecardClient } from './ScorecardClient'
 import { ArrowLeft } from 'lucide-react'
 
-export default async function LogSessionPage() {
+export default async function LogSessionPage({
+    searchParams,
+}: {
+    searchParams: { [key: string]: string | string[] | undefined }
+}) {
     const supabase = await createClient()
 
     // Verify auth
@@ -14,6 +18,39 @@ export default async function LogSessionPage() {
 
     if (!user) {
         redirect('/login')
+    }
+
+    // Check for edit mode
+    const editId = searchParams.edit
+    let initialSession = null
+
+    if (editId && typeof editId === 'string') {
+        const { data: session } = await supabase
+            .from('sessions')
+            .select(`
+                id,
+                session_date,
+                distance,
+                notes,
+                ends (
+                    id,
+                    end_index,
+                    photo_url,
+                    shots (
+                        id,
+                        shot_index,
+                        score,
+                        is_x,
+                        is_m
+                    )
+                )
+            `)
+            .eq('id', editId)
+            .single()
+
+        if (session) {
+            initialSession = session
+        }
     }
 
     return (
@@ -33,7 +70,7 @@ export default async function LogSessionPage() {
             </header>
 
             <main className="mx-auto max-w-3xl px-4 py-8">
-                <ScorecardClient userId={user.id} />
+                <ScorecardClient userId={user.id} initialSession={initialSession} />
             </main>
         </div>
     )

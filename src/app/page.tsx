@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from './actions/auth'
 import { DashboardAnalytics } from './components/DashboardAnalytics'
+import { DashboardCalendar } from './components/DashboardCalendar'
+import { parseISO } from 'date-fns'
+import { Pencil } from 'lucide-react'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -39,6 +42,9 @@ export default async function Home() {
     console.error('Error fetching sessions:', error.message)
   }
 
+  // Extract dates that contain at least one session for Calendar mapping
+  const sessionDates = sessions?.map(s => parseISO(s.session_date)) || []
+
   return (
     <div className="min-h-screen bg-zinc-50 ">
       {/* Header */}
@@ -70,6 +76,9 @@ export default async function Home() {
           + Log New Session
         </Link>
 
+        {/* Calendar View */}
+        <DashboardCalendar sessionDates={sessionDates} />
+
         <div className="mb-0 flex items-center justify-between mt-8 mb-6">
           <h2 className="text-xl font-semibold text-zinc-900 ">
             Recent Sessions
@@ -95,8 +104,16 @@ export default async function Home() {
               return (
                 <div
                   key={session.id}
-                  className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm  "
+                  className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md relative group"
                 >
+                  {/* Edit Button */}
+                  <Link
+                    href={`/log?edit=${session.id}`}
+                    className="absolute right-4 top-4 rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-100"
+                    title="Edit Session"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Link>
                   <div className="p-5">
                     <div className="flex items-start justify-between">
                       <div>
