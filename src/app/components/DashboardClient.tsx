@@ -23,14 +23,19 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
+    const parseLocalDate = (dateStr: string) => {
+        const [y, m, d] = dateStr.split('-')
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+    }
+
     // Extract dates that contain at least one session for Calendar mapping
-    const sessionDates = sessions.map(s => parseISO(s.session_date))
+    const sessionDates = sessions.map(s => parseLocalDate(s.session_date))
 
     // Filter sessions by the selected date. If no date is selected, filter by the current viewed month.
     const filteredSessions = selectedDate
-        ? sessions.filter(s => isSameDay(parseISO(s.session_date), selectedDate))
+        ? sessions.filter(s => isSameDay(parseLocalDate(s.session_date), selectedDate))
         : sessions.filter(s => {
-            const date = parseISO(s.session_date)
+            const date = parseLocalDate(s.session_date)
             return date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear()
         })
 
