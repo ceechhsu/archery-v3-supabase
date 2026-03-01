@@ -129,7 +129,7 @@ export default async function Home() {
                         </p>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right pr-10">
                         <p className="text-sm font-medium text-zinc-500 ">
                           Avg/Arrow
                         </p>

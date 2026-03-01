@@ -20,6 +20,12 @@ export function DashboardCalendar({ sessionDates }: { sessionDates: Date[] }) {
                   font-weight: 800;
                   background-color: #f4f4f5;
               }
+              .rdp-day {
+                  color: #09090b;
+              }
+              .rdp-day_outside {
+                  color: #a1a1aa;
+              }
               .rdp-day_hasSession {
                   position: relative;
               }

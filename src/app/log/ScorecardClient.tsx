@@ -89,7 +89,8 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
         window.addEventListener('offline', handleOffline)
 
         // Load from cache if exists
-        const cached = localStorage.getItem('archery_v3_draft')
+        const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
+        const cached = localStorage.getItem(draftKey)
         if (cached) {
             try {
                 const parsed = JSON.parse(cached)
@@ -116,9 +117,10 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
     // Auto-save to local storage on change
     useEffect(() => {
         // Exclude File objects before stringifying
+        const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
         const cacheableEnds = ends.map(e => ({ id: e.id, shots: e.shots }))
-        localStorage.setItem('archery_v3_draft', JSON.stringify({ distance, date, notes, shotsPerEnd, ends: cacheableEnds }))
-    }, [distance, date, notes, shotsPerEnd, ends])
+        localStorage.setItem(draftKey, JSON.stringify({ distance, date, notes, shotsPerEnd, ends: cacheableEnds }))
+    }, [distance, date, notes, shotsPerEnd, ends, initialSession?.id])
 
     // Modifer for Shots per End
     const handleShotsPerEndChange = (newTotal: number) => {
@@ -393,7 +395,8 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             }
 
             // Cleanup local storage on success
-            localStorage.removeItem('archery_v3_draft')
+            const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
+            localStorage.removeItem(draftKey)
             router.push('/')
             router.refresh()
 
