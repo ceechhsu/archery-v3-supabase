@@ -143,6 +143,7 @@ export default async function InvitePage({ searchParams }: InvitePageProps) {
         const result = await acceptInvitation({ invitationId: token })
         
         if (result.error) {
+            console.error('Accept invitation error:', result.error)
             return (
                 <div className="flex min-h-screen items-center justify-center bg-stone-50 p-4">
                     <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl ring-1 ring-stone-200">
@@ -167,6 +168,7 @@ export default async function InvitePage({ searchParams }: InvitePageProps) {
         }
 
         // Success - redirect to dashboard with success message
+        console.log('Invitation accepted successfully, matchId:', result.matchId)
         redirect('/?matchAccepted=true')
     } else {
         // Decline
