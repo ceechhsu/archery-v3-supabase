@@ -12,9 +12,9 @@ interface ChallengeModalProps {
 
 export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalProps) {
     const [email, setEmail] = useState('')
-    const [distance, setDistance] = useState(18)
-    const [endsCount, setEndsCount] = useState(2)
-    const [arrowsPerEnd, setArrowsPerEnd] = useState(5)
+    const [distance, setDistance] = useState<string>('18')
+    const [endsCount, setEndsCount] = useState<string>('2')
+    const [arrowsPerEnd, setArrowsPerEnd] = useState<string>('5')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
@@ -30,9 +30,9 @@ export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalPro
         const result = await createMatch({
             opponentEmail: email,
             config: {
-                distance,
-                endsCount,
-                arrowsPerEnd,
+                distance: parseInt(distance) || 18,
+                endsCount: parseInt(endsCount) || 2,
+                arrowsPerEnd: parseInt(arrowsPerEnd) || 5,
             },
         })
 
@@ -46,6 +46,9 @@ export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalPro
                 onSuccess()
                 onClose()
                 setEmail('')
+                setDistance('18')
+                setEndsCount('2')
+                setArrowsPerEnd('5')
                 setSuccess('')
             }, 2000)
         }
@@ -92,17 +95,16 @@ export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalPro
                                 <label className="mb-1 block text-xs font-medium text-stone-600">
                                     Distance (meters)
                                 </label>
-                                <select
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={100}
                                     value={distance}
-                                    onChange={(e) => setDistance(Number(e.target.value))}
+                                    onChange={(e) => setDistance(e.target.value)}
+                                    placeholder="18"
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-forest focus:outline-none"
-                                >
-                                    <option value={18}>18m (Indoor)</option>
-                                    <option value={25}>25m</option>
-                                    <option value={30}>30m</option>
-                                    <option value={50}>50m</option>
-                                    <option value={70}>70m (Outdoor)</option>
-                                </select>
+                                />
+                                <p className="mt-1 text-xs text-stone-400">Common: 18m (indoor), 25m, 30m, 50m, 70m (outdoor)</p>
                             </div>
 
                             {/* Ends Count */}
@@ -115,7 +117,11 @@ export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalPro
                                     min={1}
                                     max={20}
                                     value={endsCount}
-                                    onChange={(e) => setEndsCount(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const value = e.target.value
+                                        // Remove leading zeros
+                                        setEndsCount(value.replace(/^0+/, '') || '0')
+                                    }}
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-forest focus:outline-none"
                                 />
                             </div>
@@ -130,7 +136,11 @@ export function ChallengeModal({ isOpen, onClose, onSuccess }: ChallengeModalPro
                                     min={1}
                                     max={12}
                                     value={arrowsPerEnd}
-                                    onChange={(e) => setArrowsPerEnd(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const value = e.target.value
+                                        // Remove leading zeros
+                                        setArrowsPerEnd(value.replace(/^0+/, '') || '0')
+                                    }}
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-forest focus:outline-none"
                                 />
                             </div>
