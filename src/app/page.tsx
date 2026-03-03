@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { signOut } from './actions/auth'
 import { DashboardClient } from './components/DashboardClient'
 import { NavigationTabBar } from './components/NavigationTabBar'
-import { Target } from 'lucide-react'
+import { ActiveMatchBanner } from './components/matches/ActiveMatchBanner'
+import { PendingInvitations } from './components/matches/PendingInvitations'
+import { MatchResultCard } from './components/matches/MatchResultCard'
+import { ChallengeButton } from './components/matches/ChallengeButton'
+import { Target, Users } from 'lucide-react'
+import type { MatchDetails } from '@/types/matches.types'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -24,7 +29,7 @@ export default async function Home() {
   const avatarUrl = user.user_metadata?.avatar_url || ''
 
   // Fetch recent sessions
-  const { data: sessions, error } = await supabase
+  const { data: sessions, error: sessionsError } = await supabase
     .from('sessions')
     .select(
       `
@@ -45,9 +50,83 @@ export default async function Home() {
     )
     .order('session_date', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching sessions:', error.message)
+  if (sessionsError) {
+    console.error('Error fetching sessions:', sessionsError.message)
   }
+
+  // Fetch active match
+  const { data: activeMatchData } = await supabase
+    .from('matches')
+    .select('*')
+    .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
+    .in('status', ['pending', 'accepted', 'active'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  let activeMatch: MatchDetails | null = null
+  if (activeMatchData) {
+    // Get opponent info
+    const opponentId = activeMatchData.challenger_user_id === user.id 
+      ? activeMatchData.opponent_user_id 
+      : activeMatchData.challenger_user_id
+    
+    const { data: opponentData } = await supabase
+      .from('users')
+      .select('id, email, raw_user_meta_data')
+      .eq('id', opponentId)
+      .single()
+
+    activeMatch = {
+      ...activeMatchData,
+      challenger: activeMatchData.challenger_user_id === user.id 
+        ? { id: user.id, email: user.email, raw_user_meta_data: user.user_metadata }
+        : opponentData,
+      opponent: activeMatchData.opponent_user_id === user.id 
+        ? { id: user.id, email: user.email, raw_user_meta_data: user.user_metadata }
+        : opponentData,
+      yourScore: activeMatchData.challenger_user_id === user.id 
+        ? activeMatchData.challenger_total 
+        : activeMatchData.opponent_total,
+      opponentScore: activeMatchData.challenger_user_id === user.id 
+        ? activeMatchData.opponent_total 
+        : activeMatchData.challenger_total,
+      yourXCount: activeMatchData.challenger_user_id === user.id 
+        ? activeMatchData.challenger_x_count 
+        : activeMatchData.opponent_x_count,
+      opponentXCount: activeMatchData.challenger_user_id === user.id 
+        ? activeMatchData.opponent_x_count 
+        : activeMatchData.challenger_x_count,
+      isWinner: activeMatchData.winner_user_id === user.id,
+      isLoser: activeMatchData.winner_user_id && activeMatchData.winner_user_id !== user.id && !activeMatchData.is_tie,
+      isTie: activeMatchData.is_tie,
+    } as MatchDetails
+  }
+
+  // Fetch pending invitations
+  const { data: pendingInvitations } = await supabase
+    .from('match_invitations')
+    .select(`
+      *,
+      match:match_id(
+        id,
+        config_distance,
+        config_ends_count,
+        config_arrows_per_end
+      )
+    `)
+    .eq('invitee_email', user.email?.toLowerCase())
+    .eq('status', 'pending')
+    .gt('expires_at', new Date().toISOString())
+
+  // Fetch completed matches for history
+  const { data: completedMatches } = await supabase
+    .from('matches')
+    .select('*')
+    .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(5)
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -91,6 +170,44 @@ export default async function Home() {
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
         <NavigationTabBar />
+        
+        {/* Pending Invitations */}
+        {pendingInvitations && pendingInvitations.length > 0 && (
+          <PendingInvitations invitations={pendingInvitations} />
+        )}
+        
+        {/* Active Match Banner */}
+        {activeMatch && <ActiveMatchBanner match={activeMatch} />}
+        
+        {/* Challenge Button (if no active match) */}
+        {!activeMatch && (
+          <div className="mb-6">
+            <ChallengeButton />
+          </div>
+        )}
+
+        {/* Completed Matches Section */}
+        {completedMatches && completedMatches.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-serif font-semibold text-stone-800 flex items-center gap-2">
+                <Users className="h-5 w-5 text-forest" />
+                Recent Matches
+              </h2>
+            </div>
+            <div className="space-y-3">
+              {completedMatches.map((match) => (
+                <MatchResultCard 
+                  key={match.id} 
+                  match={match} 
+                  currentUserId={user.id} 
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sessions Section */}
         <DashboardClient initialSessions={sessions || []} />
       </main>
     </div>

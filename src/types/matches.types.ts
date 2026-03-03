@@ -153,6 +153,8 @@ export interface MatchDetails extends MatchWithSessions {
     isWinner?: boolean;
     isLoser?: boolean;
     isTie?: boolean;
+    yourSubmitted?: boolean;
+    opponentSubmitted?: boolean;
 }
 
 // ============================================
