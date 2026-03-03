@@ -22,7 +22,11 @@ export async function POST(request: NextRequest) {
         const result = await createMatch({ opponentEmail, config })
 
         if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: 400 })
+            console.error('createMatch error:', result.error)
+            return NextResponse.json({ 
+                error: result.error,
+                details: 'Check server logs for more details'
+            }, { status: 400 })
         }
 
         // Get the invitation ID

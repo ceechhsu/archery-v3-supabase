@@ -218,7 +218,10 @@ export async function createMatch(input: CreateMatchInput): Promise<CreateMatchR
             console.error('Error creating invitation:', inviteError)
             // Clean up the match
             await supabase.from('matches').delete().eq('id', match.id)
-            return { matchId: '', error: 'Failed to create invitation' }
+            return { 
+                matchId: '', 
+                error: `Failed to create invitation: ${inviteError?.message || 'Unknown error'}` 
+            }
         }
         
         // 3. Send email invitation via Edge Function
