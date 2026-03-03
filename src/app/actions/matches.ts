@@ -388,18 +388,11 @@ export async function getPendingInvitations() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !user.email) return []
     
+    // Simplified query - fetch invitations without match relationship
+    // The match relationship was causing PostgREST issues
     const { data: invitations, error } = await supabase
         .from('match_invitations')
-        .select(`
-            *,
-            match:match_id(
-                id,
-                config_distance,
-                config_ends_count,
-                config_arrows_per_end,
-                challenger_user_id
-            )
-        `)
+        .select('*')
         .eq('invitee_email', user.email.toLowerCase())
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
