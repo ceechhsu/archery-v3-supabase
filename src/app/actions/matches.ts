@@ -317,7 +317,7 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
     
     try {
         // Update invitation
-        await supabase
+        const { error: inviteUpdateError } = await supabase
             .from('match_invitations')
             .update({
                 status: 'accepted',
@@ -326,8 +326,13 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
             })
             .eq('id', input.invitationId)
         
+        if (inviteUpdateError) {
+            console.error('Error updating invitation:', inviteUpdateError)
+            return { matchId: '', error: `Failed to update invitation: ${inviteUpdateError.message}` }
+        }
+        
         // Update match
-        await supabase
+        const { error: matchUpdateError } = await supabase
             .from('matches')
             .update({
                 opponent_user_id: user.id,
@@ -335,6 +340,11 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
                 accepted_at: now,
             })
             .eq('id', matchId)
+        
+        if (matchUpdateError) {
+            console.error('Error updating match:', matchUpdateError)
+            return { matchId: '', error: `Failed to update match: ${matchUpdateError.message}` }
+        }
         
         revalidatePath('/')
         return { matchId }
