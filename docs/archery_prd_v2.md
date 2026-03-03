@@ -17,7 +17,7 @@ Build a robust web app that allows archers to:
 - Log practice sessions, ends, and individual shot details.
 - Attach photos of their targets to sessions.
 - View historical logs, analytics, and trends across any device.
-- **Future:** Challenge or invite other users to competitive sessions.
+- **UPDATED (V2.2):** Challenge or invite other users to competitive 1-vs-1 matches. See `archery_prd_v2-2.md` for the complete match feature specification.
 
 ### 1.2 Why the V2 Pivot
 - **Frictionless Onboarding:** V1 relied on Google Sheets/Drive scopes, which triggered Google's heavy security warnings ("unverified app"). V2 uses standard Google OAuth (Profile/Email only) which is frictionless.
@@ -29,7 +29,9 @@ Build a robust web app that allows archers to:
 **G1 — Seamless Access:** Zero friction Google sign-in.  
 **G2 — Rock-Solid Data:** Zero risk of accidental data loss from browser cache clearing.  
 **G3 — Cross-Device:** Real-time sync across all user devices.  
-**G4 — Extensibility:** Foundation laid for social/multiplayer features (challenges).
+**G4 — Extensibility:** Foundation laid for social/multiplayer features (challenges).  
+
+**UPDATE (March 2026):** The 1-vs-1 match feature previously listed as "Future" has been designed and is ready for implementation. See `archery_prd_v2-2.md`.
 
 ---
 
@@ -44,7 +46,8 @@ Build a robust web app that allows archers to:
 - Dashboard with history calendar and personal analytics.
 
 ### 2.2 Deferred (V3+)
-- **Social/Challenges:** Inviting other users to a "Match" or sharing scores.
+- **~~Social/Challenges~~** — MOVED TO V2.2: See `archery_prd_v2-2.md` for the 1-vs-1 Match feature specification.
+- Tournament support (multi-player matches)
 - Advanced coaching features where an instructor can view a student's logs.
 
 ---
