@@ -56,8 +56,14 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
     const parseLocalDate = (dateStr: string) => {
-        const [y, m, d] = dateStr.split('-')
-        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+        // Parse the ISO string and convert to local date
+        // This ensures we get the correct local date even if UTC date is different
+        const utcDate = new Date(dateStr)
+        return new Date(
+            utcDate.getFullYear(),
+            utcDate.getMonth(),
+            utcDate.getDate()
+        )
     }
 
     // Extract dates that contain at least one session for Calendar mapping
@@ -83,6 +89,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
         }
 
         const supabase = createClient()
+        
         const { error } = await supabase
             .from('sessions')
             .delete()

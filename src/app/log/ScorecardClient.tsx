@@ -316,12 +316,14 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             let sessionId = initialSession?.id;
 
             // Build the session date timestamp
-            // Always use current time when saving (both new and edit)
-            // Combine the selected date with current time
+            // Use current local time with the selected date
             const now = new Date()
             const hours = String(now.getHours()).padStart(2, '0')
             const minutes = String(now.getMinutes()).padStart(2, '0')
             const seconds = String(now.getSeconds()).padStart(2, '0')
+            
+            // Create ISO string that preserves local time (e.g., "2025-03-02T21:58:00")
+            // JavaScript will interpret this as local time and convert to UTC correctly
             const sessionDateISO = new Date(`${date}T${hours}:${minutes}:${seconds}`).toISOString()
 
             if (sessionId) {

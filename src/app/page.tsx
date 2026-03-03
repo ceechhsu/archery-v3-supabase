@@ -72,7 +72,7 @@ export default async function Home() {
                   referrerPolicy="no-referrer" 
                 />
               )}
-              <span className="text-sm font-medium text-stone-600 hidden sm:inline-block">
+              <span className="text-sm font-medium text-stone-600">
                 Welcome, {firstName}
               </span>
             </div>

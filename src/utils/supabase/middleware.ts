@@ -2,10 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-    let supabaseResponse = NextResponse.next({
-        request,
+    // Create a response to modify
+    const response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
     })
 
+    // Create Supabase server client with cookie handlers
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,45 +19,35 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-                    supabaseResponse = NextResponse.next({
-                        request,
+                    console.log('Setting cookies:', cookiesToSet.map(c => c.name))
+                    // Set cookies on the request for this response
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        request.cookies.set(name, value)
+                        response.cookies.set(name, value, options)
                     })
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
-                    )
                 },
             },
         }
     )
 
-    // Do not run code between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-    // issues with users being randomly logged out.
+    // This will refresh the session if expired
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // IMPORTANT: DO NOT REMOVE auth.getUser()
+    // Protect routes
+    const pathname = request.nextUrl.pathname
+    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/auth')
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
-    ) {
-        // no user, potentially respond by redirecting the user to the login page
+    if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
     }
 
-    // If user is logged in and tries to access login page, redirect to dashboard
-    if (user && request.nextUrl.pathname === '/login') {
+    if (user && pathname === '/login') {
         const url = request.nextUrl.clone()
         url.pathname = '/'
         return NextResponse.redirect(url)
     }
 
-    return supabaseResponse
+    return response
 }
