@@ -88,14 +88,10 @@ export async function getMatchDetails({ matchId }: { matchId: string }): Promise
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
     
+    // Get match without user relationships (auth.users is in different schema)
     const { data: match, error } = await supabase
         .from('matches')
-        .select(`
-            *,
-            challenger:challenger_user_id(id, email, raw_user_meta_data),
-            opponent:opponent_user_id(id, email, raw_user_meta_data),
-            winner:winner_user_id(id, email, raw_user_meta_data)
-        `)
+        .select('*')
         .eq('id', matchId)
         .single()
     
@@ -396,12 +392,12 @@ export async function getPendingInvitations() {
         .from('match_invitations')
         .select(`
             *,
-            match:matches(
+            match:match_id(
                 id,
                 config_distance,
                 config_ends_count,
                 config_arrows_per_end,
-                challenger:challenger_user_id(id, email, raw_user_meta_data)
+                challenger_user_id
             )
         `)
         .eq('invitee_email', user.email.toLowerCase())
@@ -637,12 +633,7 @@ export async function listMatches(input: ListMatchesInput = {}): Promise<MatchWi
     
     let query = supabase
         .from('matches')
-        .select(`
-            *,
-            challenger:challenger_user_id(id, email, raw_user_meta_data),
-            opponent:opponent_user_id(id, email, raw_user_meta_data),
-            winner:winner_user_id(id, email, raw_user_meta_data)
-        `)
+        .select('*')
         .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)

@@ -6,6 +6,7 @@ import {
     getPendingInvitations,
     listMatches,
 } from '@/app/actions/matches'
+import { RefreshButton } from './RefreshButton'
 
 export default async function TestMatchesPage() {
     const supabase = await createClient()
@@ -173,12 +174,7 @@ export default async function TestMatchesPage() {
                     >
                         ← Back to Dashboard
                     </a>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
-                    >
-                        🔄 Refresh Tests
-                    </button>
+                    <RefreshButton />
                 </div>
             </div>
         </div>
