@@ -203,6 +203,6 @@ export interface MatchResult {
 
 export interface CanCreateMatchResult {
     canCreate: boolean;
-    reason?: 'HAS_ACTIVE_MATCH' | 'ALREADY_INVITED';
+    reason?: 'NOT_AUTHENTICATED' | 'HAS_ACTIVE_MATCH' | 'ALREADY_INVITED' | 'CHECK_ERROR';
     activeMatchId?: string;
 }

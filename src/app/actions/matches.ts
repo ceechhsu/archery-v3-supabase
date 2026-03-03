@@ -17,8 +17,8 @@ import type {
     MatchWithPlayers,
     CanCreateMatchResult,
     MatchConfig,
-    DEFAULT_MATCH_CONFIG,
 } from '@/types/matches.types'
+import { DEFAULT_MATCH_CONFIG } from '@/types/matches.types'
 
 // ============================================
 // HELPER FUNCTIONS
