@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { cancelMatch } from '@/app/actions/matches'
-import { Target, ArrowLeft, Mail, Clock, X, Copy, Check } from 'lucide-react'
+import { Target, ArrowLeft, Mail, Clock, X } from 'lucide-react'
 
 interface MatchPageProps {
     params: Promise<{ id: string }>
@@ -225,15 +225,4 @@ export default async function MatchPage({ params }: MatchPageProps) {
     )
 }
 
-// Copy button component
-function CopyButton({ text }: { text: string }) {
-    return (
-        <button
-            onClick={() => navigator.clipboard.writeText(text)}
-            className="rounded-lg bg-amber-200 px-4 py-2 text-amber-800 hover:bg-amber-300"
-            title="Copy to clipboard"
-        >
-            <Copy className="h-5 w-5" />
-        </button>
-    )
-}
+import { CopyButton } from '@/app/components/CopyButton'
