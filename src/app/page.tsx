@@ -55,36 +55,41 @@ export default async function Home() {
   }
 
   // Fetch active match
-  const { data: activeMatchData } = await supabase
+  const { data: activeMatchData, error: activeMatchError } = await supabase
     .from('matches')
     .select('*')
     .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
     .in('status', ['pending', 'accepted', 'active'])
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
+
+  if (activeMatchError) {
+    console.error('Error fetching active match:', activeMatchError)
+  }
 
   let activeMatch: MatchDetails | null = null
   if (activeMatchData) {
-    // Get opponent info
-    const opponentId = activeMatchData.challenger_user_id === user.id 
-      ? activeMatchData.opponent_user_id 
-      : activeMatchData.challenger_user_id
-    
-    const { data: opponentData } = await supabase
-      .from('users')
-      .select('id, email, raw_user_meta_data')
-      .eq('id', opponentId)
-      .single()
-
     activeMatch = {
       ...activeMatchData,
-      challenger: activeMatchData.challenger_user_id === user.id 
-        ? { id: user.id, email: user.email, raw_user_meta_data: user.user_metadata }
-        : opponentData,
-      opponent: activeMatchData.opponent_user_id === user.id 
-        ? { id: user.id, email: user.email, raw_user_meta_data: user.user_metadata }
-        : opponentData,
+      challenger: { 
+        id: activeMatchData.challenger_user_id, 
+        full_name: null, 
+        avatar_url: null 
+      },
+      opponent: activeMatchData.opponent_user_id 
+        ? { 
+            id: activeMatchData.opponent_user_id, 
+            full_name: null, 
+            avatar_url: null 
+          }
+        : null,
+      winner: activeMatchData.winner_user_id
+        ? { 
+            id: activeMatchData.winner_user_id, 
+            full_name: null 
+          }
+        : null,
       yourScore: activeMatchData.challenger_user_id === user.id 
         ? activeMatchData.challenger_total 
         : activeMatchData.opponent_total,

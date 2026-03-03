@@ -9,13 +9,6 @@ interface Invitation {
     invitee_email: string
     status: string
     expires_at: string
-    match?: {
-        id: string
-        config_distance: number
-        config_ends_count: number
-        config_arrows_per_end: number
-        challenger_user_id: string
-    } | null
 }
 
 interface PendingInvitationsProps {
@@ -80,8 +73,7 @@ export function PendingInvitations({ invitations }: PendingInvitationsProps) {
                                 Match Invitation
                             </p>
                             <p className="text-sm text-stone-600">
-                                Someone invited you to a {invitation.match?.config_distance}m match
-                                ({invitation.match?.config_ends_count} ends, {invitation.match?.config_arrows_per_end} arrows)
+                                You have been invited to a match!
                             </p>
                             <p className="mt-1 text-xs text-stone-500">
                                 Expires: {new Date(invitation.expires_at).toLocaleString()}
