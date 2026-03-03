@@ -203,7 +203,7 @@ export async function createMatch(input: CreateMatchInput): Promise<CreateMatchR
         }
         
         // 2. Create the invitation
-        const { error: inviteError } = await supabase
+        const { data: invitation, error: inviteError } = await supabase
             .from('match_invitations')
             .insert({
                 match_id: match.id,
@@ -211,17 +211,42 @@ export async function createMatch(input: CreateMatchInput): Promise<CreateMatchR
                 status: 'pending',
                 expires_at: invitationExpiresAt.toISOString(),
             })
+            .select()
+            .single()
         
-        if (inviteError) {
+        if (inviteError || !invitation) {
             console.error('Error creating invitation:', inviteError)
             // Clean up the match
             await supabase.from('matches').delete().eq('id', match.id)
             return { matchId: '', error: 'Failed to create invitation' }
         }
         
-        // 3. Send email invitation (Phase 3)
-        // For now, we'll just return success
-        // TODO: Integrate with Supabase email in Phase 3
+        // 3. Send email invitation via Edge Function
+        const challengerName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'A player'
+        
+        try {
+            // Get the site URL for the email links
+            const { data: { session } } = await supabase.auth.getSession()
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+            
+            // Invoke the Edge Function to send email
+            const { error: emailError } = await supabase.functions.invoke('send-match-invitation', {
+                body: {
+                    invitationId: invitation.id,
+                    challengerName,
+                    opponentEmail: opponentEmail.toLowerCase().trim(),
+                    matchConfig: finalConfig,
+                },
+            })
+            
+            if (emailError) {
+                console.error('Error sending invitation email:', emailError)
+                // Continue - email is not critical, user can share link manually
+            }
+        } catch (emailErr) {
+            console.error('Failed to send email:', emailErr)
+            // Continue - email is not critical
+        }
         
         revalidatePath('/')
         return { matchId: match.id }
