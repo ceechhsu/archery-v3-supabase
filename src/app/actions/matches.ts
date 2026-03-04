@@ -49,6 +49,60 @@ export async function canCreateMatch(): Promise<CanCreateMatchResult> {
         // Get the active match ID
         const { data: activeMatchId } = await supabase
             .rpc('get_user_active_match', { p_user_id: user.id })
+
+        if (activeMatchId) {
+            const { data: activeMatch } = await supabase
+                .from('matches')
+                .select('id, status, challenger_user_id, opponent_user_id, challenger_total, opponent_total')
+                .eq('id', activeMatchId)
+                .maybeSingle()
+
+            // Self-heal stale pending match when invitation already resolved.
+            if (activeMatch?.status === 'pending' && activeMatch.challenger_user_id === user.id) {
+                const { data: invitation } = await supabase
+                    .from('match_invitations')
+                    .select('status')
+                    .eq('match_id', activeMatchId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+
+                if (invitation && invitation.status !== 'pending') {
+                    await supabase
+                        .from('matches')
+                        .update({
+                            status: 'cancelled',
+                            cancelled_reason: `Invitation ${invitation.status}`,
+                            cancelled_at: new Date().toISOString(),
+                        })
+                        .eq('id', activeMatchId)
+
+                    return { canCreate: true }
+                }
+            }
+
+            // Self-heal stale active match when both scores are already present.
+            // We use match totals here because session rows for the other player are blocked by RLS.
+            if (activeMatch?.status === 'active' && activeMatch.opponent_user_id) {
+                const bothSubmitted = activeMatch.challenger_total !== null && activeMatch.opponent_total !== null
+                if (bothSubmitted) {
+                    const now = new Date().toISOString()
+                    const { error: completeError } = await supabase
+                        .from('matches')
+                        .update({
+                        status: 'completed',
+                        completed_at: now,
+                        updated_at: now,
+                        })
+                        .eq('id', activeMatchId)
+
+                    if (!completeError) {
+                        await supabase.rpc('calculate_match_winner', { p_match_id: activeMatchId })
+                        return { canCreate: true }
+                    }
+                }
+            }
+        }
         
         return { 
             canCreate: false, 
@@ -266,6 +320,7 @@ export async function createMatch(input: CreateMatchInput): Promise<CreateMatchR
 
 /**
  * Accept a match invitation
+ * Uses atomic database function to ensure both invitation and match are updated together
  */
 export async function acceptInvitation(input: AcceptInvitationInput): Promise<AcceptInvitationResponse> {
     const supabase = await createClient()
@@ -275,82 +330,47 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
         return { matchId: '', error: 'Not authenticated' }
     }
     
-    // Get the invitation
-    const { data: invitation, error: inviteError } = await supabase
-        .from('match_invitations')
-        .select('*, match:matches(*)')
-        .eq('id', input.invitationId)
-        .eq('status', 'pending')
-        .single()
-    
-    if (inviteError || !invitation) {
-        return { matchId: '', error: 'Invitation not found or already responded' }
-    }
-    
-    // Verify the invitation is for this user
-    const userEmail = user.email?.toLowerCase()
-    if (invitation.invitee_email !== userEmail) {
-        return { matchId: '', error: 'This invitation is not for you' }
-    }
-    
-    // Check if expired
-    if (new Date(invitation.expires_at) < new Date()) {
-        // Mark as expired
-        await supabase
-            .from('match_invitations')
-            .update({ status: 'expired' })
-            .eq('id', input.invitationId)
-        
-        return { matchId: '', error: 'Invitation has expired' }
-    }
-    
-    // Check if user already has active match
-    const { data: hasActive } = await supabase
-        .rpc('user_has_active_match', { p_user_id: user.id })
-    
-    if (hasActive) {
-        return { matchId: '', error: 'You already have an active match' }
-    }
-    
-    const matchId = invitation.match_id
-    const now = new Date().toISOString()
+    console.log('[acceptInvitation] Starting for user:', user.id, 'invitation:', input.invitationId)
     
     try {
-        // Update invitation
-        const { error: inviteUpdateError } = await supabase
-            .from('match_invitations')
-            .update({
-                status: 'accepted',
-                invitee_user_id: user.id,
-                responded_at: now,
+        // Use the atomic database function
+        const { data: result, error: rpcError } = await supabase
+            .rpc('accept_match_invitation', {
+                p_invitation_id: input.invitationId,
+                p_user_id: user.id,
+                p_user_email: user.email?.toLowerCase() || '',
             })
-            .eq('id', input.invitationId)
         
-        if (inviteUpdateError) {
-            console.error('Error updating invitation:', inviteUpdateError)
-            return { matchId: '', error: `Failed to update invitation: ${inviteUpdateError.message}` }
+        if (rpcError) {
+            console.error('[acceptInvitation] RPC error:', rpcError)
+            return { matchId: '', error: `Failed to accept invitation: ${rpcError.message}` }
         }
         
-        // Update match
-        const { error: matchUpdateError } = await supabase
-            .from('matches')
-            .update({
-                opponent_user_id: user.id,
-                status: 'accepted',
-                accepted_at: now,
-            })
-            .eq('id', matchId)
+        // The result comes back as an array with a single object
+        const outcome = result?.[0]
         
-        if (matchUpdateError) {
-            console.error('Error updating match:', matchUpdateError)
-            return { matchId: '', error: `Failed to update match: ${matchUpdateError.message}` }
+        if (!outcome) {
+            console.error('[acceptInvitation] No result from RPC')
+            return { matchId: '', error: 'Failed to accept invitation - no response' }
         }
         
+        console.log('[acceptInvitation] RPC result:', outcome)
+        
+        if (!outcome.success) {
+            return { matchId: '', error: outcome.error_message || 'Failed to accept invitation' }
+        }
+        
+        console.log('[acceptInvitation] Successfully accepted, matchId:', outcome.match_id)
+        
+        // Force revalidation of all related paths
         revalidatePath('/')
-        return { matchId }
+        revalidatePath('/match')
+        revalidatePath(`/match/${outcome.match_id}`)
+        
+        return { matchId: outcome.match_id }
         
     } catch (err) {
-        console.error('Error accepting invitation:', err)
+        console.error('[acceptInvitation] Unexpected error:', err)
         return { matchId: '', error: 'Failed to accept invitation' }
     }
 }
@@ -388,7 +408,7 @@ export async function declineInvitation(input: DeclineInvitationInput): Promise<
     
     try {
         // Update invitation
-        await supabase
+        const { error: invitationUpdateError } = await supabase
             .from('match_invitations')
             .update({
                 status: 'declined',
@@ -396,9 +416,14 @@ export async function declineInvitation(input: DeclineInvitationInput): Promise<
                 responded_at: now,
             })
             .eq('id', input.invitationId)
+
+        if (invitationUpdateError) {
+            console.error('Error declining invitation record:', invitationUpdateError)
+            return { error: 'Failed to decline invitation' }
+        }
         
         // Cancel the match
-        await supabase
+        const { error: matchCancelError } = await supabase
             .from('matches')
             .update({
                 status: 'cancelled',
@@ -407,8 +432,15 @@ export async function declineInvitation(input: DeclineInvitationInput): Promise<
                 cancelled_at: now,
             })
             .eq('id', invitation.match_id)
+
+        if (matchCancelError) {
+            // This can fail if RLS prevents the invited user from updating pending matches.
+            // The invitation is still declined, so we do not hard-fail the action.
+            console.error('Error cancelling declined match:', matchCancelError)
+        }
         
         revalidatePath('/')
+        revalidatePath(`/match/${invitation.match_id}`)
         return {}
         
     } catch (err) {
@@ -482,7 +514,7 @@ export async function cancelMatch(input: CancelMatchInput): Promise<{ error?: st
     const now = new Date().toISOString()
     
     try {
-        await supabase
+        const { data: updatedMatch, error: updateError } = await supabase
             .from('matches')
             .update({
                 status: 'cancelled',
@@ -492,6 +524,15 @@ export async function cancelMatch(input: CancelMatchInput): Promise<{ error?: st
                 updated_at: now,
             })
             .eq('id', input.matchId)
+            .eq('challenger_user_id', user.id)
+            .in('status', ['pending', 'accepted', 'active'])
+            .select('id')
+            .maybeSingle()
+
+        if (updateError || !updatedMatch) {
+            console.error('Error cancelling match:', updateError)
+            return { error: 'Could not cancel this match (it may already be completed)' }
+        }
         
         // Also cancel any pending invitations
         await supabase
@@ -501,6 +542,7 @@ export async function cancelMatch(input: CancelMatchInput): Promise<{ error?: st
             .eq('status', 'pending')
         
         revalidatePath('/')
+        revalidatePath(`/match/${input.matchId}`)
         return {}
         
     } catch (err) {
@@ -520,6 +562,8 @@ export async function submitMatchScores(input: SubmitMatchScoresInput): Promise<
         return { status: 'waiting', error: 'Not authenticated' }
     }
     
+    console.log('[submitMatchScores] Starting for match:', input.matchId, 'user:', user.id)
+    
     // Get the match
     const { data: match, error: matchError } = await supabase
         .from('matches')
@@ -528,8 +572,11 @@ export async function submitMatchScores(input: SubmitMatchScoresInput): Promise<
         .single()
     
     if (matchError || !match) {
+        console.error('[submitMatchScores] Match not found:', matchError)
         return { status: 'waiting', error: 'Match not found' }
     }
+    
+    console.log('[submitMatchScores] Found match:', match.id, 'status:', match.status)
     
     // Determine which player we are
     const isChallenger = match.challenger_user_id === user.id
@@ -539,21 +586,31 @@ export async function submitMatchScores(input: SubmitMatchScoresInput): Promise<
         return { status: 'waiting', error: 'You are not part of this match' }
     }
     
-    // Get the session for this player
-    const sessionId = isChallenger ? match.challenger_session_id : match.opponent_session_id
-    
-    if (!sessionId) {
+    // Find this player's latest session linked to the match.
+    // We intentionally do not rely only on match.challenger_session_id/opponent_session_id,
+    // because those pointers can be stale or missing.
+    const { data: userSessions, error: userSessionsError } = await supabase
+        .from('sessions')
+        .select('id, is_submitted_to_match, created_at')
+        .eq('match_id', input.matchId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+    if (userSessionsError) {
+        console.error('[submitMatchScores] Error fetching user session:', userSessionsError)
+        return { status: 'waiting', error: 'Failed to load your match session' }
+    }
+
+    const playerSession = userSessions?.[0]
+    const sessionId = playerSession?.id
+
+    if (!sessionId || !playerSession) {
         return { status: 'waiting', error: 'You have not created a session for this match' }
     }
     
     // Check if already submitted
-    const { data: session } = await supabase
-        .from('sessions')
-        .select('is_submitted_to_match')
-        .eq('id', sessionId)
-        .single()
-    
-    if (session?.is_submitted_to_match) {
+    if (playerSession.is_submitted_to_match) {
         return { status: 'waiting', error: 'You have already submitted your scores' }
     }
     
@@ -582,13 +639,18 @@ export async function submitMatchScores(input: SubmitMatchScoresInput): Promise<
     
     try {
         // Mark session as submitted
-        await supabase
+        const { error: submitSessionError } = await supabase
             .from('sessions')
             .update({
                 is_submitted_to_match: true,
                 submitted_at: now,
             })
             .eq('id', sessionId)
+
+        if (submitSessionError) {
+            console.error('[submitMatchScores] Error marking session submitted:', submitSessionError)
+            return { status: 'waiting', error: 'Failed to submit your session' }
+        }
         
         // Update match with scores
         const updateData: Record<string, unknown> = {
@@ -598,48 +660,76 @@ export async function submitMatchScores(input: SubmitMatchScoresInput): Promise<
         if (isChallenger) {
             updateData.challenger_total = totalScore
             updateData.challenger_x_count = xCount
+            updateData.challenger_session_id = sessionId
         } else {
             updateData.opponent_total = totalScore
             updateData.opponent_x_count = xCount
+            updateData.opponent_session_id = sessionId
         }
-        
-        // Check if both have submitted
-        const otherSessionId = isChallenger ? match.opponent_session_id : match.challenger_session_id
-        
-        if (otherSessionId) {
-            const { data: otherSession } = await supabase
-                .from('sessions')
-                .select('is_submitted_to_match')
-                .eq('id', otherSessionId)
-                .single()
-            
-            if (otherSession?.is_submitted_to_match) {
-                // Both submitted - complete the match
-                await supabase
-                    .from('matches')
-                    .update({
-                        ...updateData,
-                        status: 'completed',
-                        completed_at: now,
-                    })
-                    .eq('id', input.matchId)
-                
-                // Calculate winner
-                await supabase.rpc('calculate_match_winner', { p_match_id: input.matchId })
-                
-                revalidatePath('/')
-                return { status: 'completed' }
-            }
-        }
-        
-        // Only this player submitted
-        await supabase
+
+        // Persist this player's totals/session pointer first.
+        const { error: saveScoreError } = await supabase
             .from('matches')
             .update(updateData)
             .eq('id', input.matchId)
+
+        if (saveScoreError) {
+            console.error('[submitMatchScores] Error saving score to match:', saveScoreError)
+            return { status: 'waiting', error: 'Failed to save match score' }
+        }
+
+        // Re-read match state after saving this player's totals.
+        // Do not query both players' sessions here: RLS only allows reading current user's sessions.
+        const { data: refreshedMatch, error: refreshedMatchError } = await supabase
+            .from('matches')
+            .select('challenger_total, opponent_total')
+            .eq('id', input.matchId)
+            .single()
+
+        if (refreshedMatchError || !refreshedMatch) {
+            console.error('[submitMatchScores] Error loading refreshed match:', refreshedMatchError)
+            revalidatePath('/')
+            revalidatePath(`/match/${input.matchId}`)
+            return { status: 'waiting', opponentSubmitted: false }
+        }
+
+        const challengerSubmitted = refreshedMatch.challenger_total !== null
+        const opponentSubmitted = refreshedMatch.opponent_total !== null
+        const bothSubmitted = challengerSubmitted && opponentSubmitted
+
+        if (bothSubmitted) {
+            const completionUpdate: Record<string, unknown> = {
+                status: 'completed',
+                completed_at: now,
+                updated_at: now,
+            }
+
+            const { error: completeStatusError } = await supabase
+                .from('matches')
+                .update(completionUpdate)
+                .eq('id', input.matchId)
+
+            if (completeStatusError) {
+                console.error('[submitMatchScores] Error completing match:', completeStatusError)
+                return { status: 'waiting', error: 'Scores submitted, but could not finalize match' }
+            }
+
+            const { error: winnerError } = await supabase
+                .rpc('calculate_match_winner', { p_match_id: input.matchId })
+
+            if (winnerError) {
+                console.error('[submitMatchScores] Error calculating winner:', winnerError)
+                return { status: 'waiting', error: 'Scores submitted, but winner calculation failed' }
+            }
+
+            revalidatePath('/')
+            revalidatePath(`/match/${input.matchId}`)
+            return { status: 'completed' }
+        }
         
         revalidatePath('/')
-        return { status: 'waiting', opponentSubmitted: false }
+        revalidatePath(`/match/${input.matchId}`)
+        return { status: 'waiting', opponentSubmitted: isChallenger ? opponentSubmitted : challengerSubmitted }
         
     } catch (err) {
         console.error('Error submitting scores:', err)

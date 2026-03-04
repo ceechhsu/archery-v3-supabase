@@ -25,7 +25,7 @@ export function ActiveMatchBanner({ match }: ActiveMatchBannerProps) {
     } else if (isWaitingForOpponent) {
         statusText = `${opponentName} needs to start their session`
         actionText = 'Continue Scoring'
-        href = '/log'
+        href = `/log?matchId=${match.id}`
     } else if (isInProgress) {
         if (match.yourSubmitted && !match.opponentSubmitted) {
             statusText = `Waiting for ${opponentName} to submit`
@@ -34,7 +34,7 @@ export function ActiveMatchBanner({ match }: ActiveMatchBannerProps) {
         } else if (!match.yourSubmitted) {
             statusText = `Match in progress vs ${opponentName}`
             actionText = 'Continue Scoring'
-            href = '/log'
+            href = `/log?matchId=${match.id}`
         }
     }
 

@@ -95,3 +95,19 @@ html {
   border-radius: 50%;
   background-color: #2d4a3e;
 }
+
+.rdp-day_hasMatch {
+  position: relative;
+}
+
+.rdp-day_hasMatch::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: #c56b2a;
+}

@@ -1,3 +1,6 @@
+// Force dynamic rendering to prevent caching
+export const dynamic = 'force-dynamic'
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { acceptInvitation, declineInvitation } from '@/app/actions/matches'
@@ -167,9 +170,10 @@ export default async function InvitePage({ searchParams }: InvitePageProps) {
             )
         }
 
-        // Success - redirect to dashboard with success message
+        // Success - redirect to dashboard with success message and cache bust
         console.log('Invitation accepted successfully, matchId:', result.matchId)
-        redirect('/?matchAccepted=true')
+        const cacheBust = Date.now()
+        redirect(`/?matchAccepted=true&t=${cacheBust}`)
     } else {
         // Decline
         const result = await declineInvitation({ invitationId: token })
@@ -198,7 +202,7 @@ export default async function InvitePage({ searchParams }: InvitePageProps) {
             )
         }
 
-        // Success - redirect to dashboard
-        redirect('/?matchDeclined=true')
+        // Success - redirect to dashboard with cache bust
+        redirect(`/?matchDeclined=true&t=${Date.now()}`)
     }
 }

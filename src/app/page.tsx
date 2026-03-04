@@ -1,3 +1,6 @@
+// Force dynamic rendering to prevent caching
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -6,12 +9,65 @@ import { DashboardClient } from './components/DashboardClient'
 import { NavigationTabBar } from './components/NavigationTabBar'
 import { ActiveMatchBanner } from './components/matches/ActiveMatchBanner'
 import { PendingInvitations } from './components/matches/PendingInvitations'
-import { MatchResultCard } from './components/matches/MatchResultCard'
 import { ChallengeButton } from './components/matches/ChallengeButton'
-import { Target, Users } from 'lucide-react'
+import { Target, Users, CheckCircle } from 'lucide-react'
 import type { MatchDetails } from '@/types/matches.types'
 
-export default async function Home() {
+type DashboardShot = {
+  score: number
+  is_x?: boolean | null
+  is_m?: boolean | null
+}
+
+type DashboardSession = {
+  id: string
+  session_date: string
+  distance: number | null
+  notes: string | null
+  match_id: string | null
+  is_submitted_to_match: boolean
+  submitted_at: string | null
+  ends: {
+    id: string
+    photo_url: string | null
+    shots: DashboardShot[]
+  }[]
+  match: {
+    id: string
+    status: 'pending' | 'accepted' | 'active' | 'completed' | 'cancelled'
+    completed_at: string | null
+    challenger_user_id: string
+    opponent_user_id: string | null
+    challenger_total: number | null
+    opponent_total: number | null
+  } | null
+}
+
+type DashboardCalendarEntry = {
+  id: string
+  session_date: string
+  display_date: string
+  distance: number | null
+  notes: string | null
+  ends: {
+    id: string
+    photo_url: string | null
+    shots: DashboardShot[]
+  }[]
+  is_match: boolean
+  match_id: string | null
+  match_score_summary: string | null
+}
+
+interface HomePageProps {
+  searchParams: Promise<{
+    matchAccepted?: string
+    matchDeclined?: string
+  }>
+}
+
+export default async function Home({ searchParams }: HomePageProps) {
+  const params = await searchParams
   const supabase = await createClient()
 
   // Verify auth safely
@@ -37,6 +93,9 @@ export default async function Home() {
       session_date,
       distance,
       notes,
+      match_id,
+      is_submitted_to_match,
+      submitted_at,
       ends (
         id,
         photo_url,
@@ -45,6 +104,15 @@ export default async function Home() {
           is_x,
           is_m
         )
+      ),
+      match:matches!match_id (
+        id,
+        status,
+        completed_at,
+        challenger_user_id,
+        opponent_user_id,
+        challenger_total,
+        opponent_total
       )
     `
     )
@@ -54,8 +122,91 @@ export default async function Home() {
     console.error('Error fetching sessions:', sessionsError.message)
   }
 
+  const normalizedSessions = (sessions ?? []) as unknown as DashboardSession[]
+
+  // Build dashboard calendar entries:
+  // - solo sessions always included
+  // - match sessions included only when match is completed
+  // - one consolidated entry per match per user, using submitted session only
+  // - match entry date is match completed_at
+  const matchEntriesByMatchId = new Map<string, DashboardCalendarEntry>()
+  const dashboardEntries: DashboardCalendarEntry[] = []
+
+  for (const session of normalizedSessions) {
+    const match = session.match
+    const isMatchSession = !!session.match_id
+
+    if (!isMatchSession) {
+      dashboardEntries.push({
+        id: session.id,
+        session_date: session.session_date,
+        display_date: session.session_date,
+        distance: session.distance,
+        notes: session.notes,
+        ends: session.ends || [],
+        is_match: false,
+        match_id: null,
+        match_score_summary: null,
+      })
+      continue
+    }
+
+    // Hide match sessions until match is completed.
+    if (!match || match.status !== 'completed') {
+      continue
+    }
+
+    // Only use submitted sessions for consolidated match history entry.
+    if (!session.is_submitted_to_match) {
+      continue
+    }
+
+    const matchId = session.match_id
+    if (!matchId) {
+      continue
+    }
+
+    const isChallenger = match.challenger_user_id === user.id
+    const yourScore = isChallenger ? match.challenger_total : match.opponent_total
+    const opponentScore = isChallenger ? match.opponent_total : match.challenger_total
+    const scoreSummary =
+      yourScore !== null && opponentScore !== null
+        ? `You ${yourScore} - Opponent ${opponentScore}`
+        : null
+
+    const entry: DashboardCalendarEntry = {
+      id: session.id,
+      session_date: session.session_date,
+      display_date: match.completed_at || session.session_date,
+      distance: session.distance,
+      notes: session.notes,
+      ends: session.ends || [],
+      is_match: true,
+      match_id: matchId,
+      match_score_summary: scoreSummary,
+    }
+
+    const existing = matchEntriesByMatchId.get(matchId)
+    if (!existing) {
+      matchEntriesByMatchId.set(matchId, entry)
+      continue
+    }
+
+    // If multiple submitted sessions exist for same match/user, keep the latest submitted one.
+    const existingSubmitted = normalizedSessions.find((s) => s.id === existing.id)?.submitted_at
+    const incomingSubmitted = session.submitted_at
+    const existingTime = existingSubmitted ? new Date(existingSubmitted).getTime() : 0
+    const incomingTime = incomingSubmitted ? new Date(incomingSubmitted).getTime() : 0
+    if (incomingTime >= existingTime) {
+      matchEntriesByMatchId.set(matchId, entry)
+    }
+  }
+
+  dashboardEntries.push(...matchEntriesByMatchId.values())
+  dashboardEntries.sort((a, b) => new Date(b.display_date).getTime() - new Date(a.display_date).getTime())
+
   // Fetch active match
-  const { data: activeMatchData, error: activeMatchError } = await supabase
+  const { data: initialActiveMatchData, error: activeMatchError } = await supabase
     .from('matches')
     .select('*')
     .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
@@ -64,43 +215,81 @@ export default async function Home() {
     .limit(1)
     .maybeSingle()
 
+  let activeMatchData = initialActiveMatchData
+
   if (activeMatchError) {
     console.error('Error fetching active match:', activeMatchError)
+  }
+
+  // If the match is still marked pending but its invitation is already declined/expired,
+  // do not show it as an active match on the dashboard.
+  if (activeMatchData?.status === 'pending' && activeMatchData.challenger_user_id === user.id) {
+    const { data: invitationState } = await supabase
+      .from('match_invitations')
+      .select('status')
+      .eq('match_id', activeMatchData.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (invitationState && invitationState.status !== 'pending') {
+      activeMatchData = null
+    }
+  }
+
+  // Self-heal stale active match rows when both scores are present.
+  // We use totals here because session rows for the opponent are not readable via RLS.
+  if (activeMatchData?.status === 'active' && activeMatchData.opponent_user_id) {
+    const bothSubmitted = activeMatchData.challenger_total !== null && activeMatchData.opponent_total !== null
+    if (bothSubmitted) {
+      const now = new Date().toISOString()
+      await supabase
+        .from('matches')
+        .update({
+          status: 'completed',
+          completed_at: activeMatchData.completed_at || now,
+          updated_at: now,
+        })
+        .eq('id', activeMatchData.id)
+
+      await supabase.rpc('calculate_match_winner', { p_match_id: activeMatchData.id })
+      activeMatchData = null
+    }
   }
 
   let activeMatch: MatchDetails | null = null
   if (activeMatchData) {
     activeMatch = {
       ...activeMatchData,
-      challenger: { 
-        id: activeMatchData.challenger_user_id, 
-        full_name: null, 
-        avatar_url: null 
+      challenger: {
+        id: activeMatchData.challenger_user_id,
+        full_name: null,
+        avatar_url: null
       },
-      opponent: activeMatchData.opponent_user_id 
-        ? { 
-            id: activeMatchData.opponent_user_id, 
-            full_name: null, 
-            avatar_url: null 
-          }
+      opponent: activeMatchData.opponent_user_id
+        ? {
+          id: activeMatchData.opponent_user_id,
+          full_name: null,
+          avatar_url: null
+        }
         : null,
       winner: activeMatchData.winner_user_id
-        ? { 
-            id: activeMatchData.winner_user_id, 
-            full_name: null 
-          }
+        ? {
+          id: activeMatchData.winner_user_id,
+          full_name: null
+        }
         : null,
-      yourScore: activeMatchData.challenger_user_id === user.id 
-        ? activeMatchData.challenger_total 
+      yourScore: activeMatchData.challenger_user_id === user.id
+        ? activeMatchData.challenger_total
         : activeMatchData.opponent_total,
-      opponentScore: activeMatchData.challenger_user_id === user.id 
-        ? activeMatchData.opponent_total 
+      opponentScore: activeMatchData.challenger_user_id === user.id
+        ? activeMatchData.opponent_total
         : activeMatchData.challenger_total,
-      yourXCount: activeMatchData.challenger_user_id === user.id 
-        ? activeMatchData.challenger_x_count 
+      yourXCount: activeMatchData.challenger_user_id === user.id
+        ? activeMatchData.challenger_x_count
         : activeMatchData.opponent_x_count,
-      opponentXCount: activeMatchData.challenger_user_id === user.id 
-        ? activeMatchData.opponent_x_count 
+      opponentXCount: activeMatchData.challenger_user_id === user.id
+        ? activeMatchData.opponent_x_count
         : activeMatchData.challenger_x_count,
       isWinner: activeMatchData.winner_user_id === user.id,
       isLoser: activeMatchData.winner_user_id && activeMatchData.winner_user_id !== user.id && !activeMatchData.is_tie,
@@ -139,8 +328,8 @@ export default async function Home() {
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex items-center gap-2 text-xl font-serif font-bold tracking-tight text-forest hover:text-forest-light transition-colors"
             >
               <Target className="h-6 w-6 text-terracotta" />
@@ -149,11 +338,11 @@ export default async function Home() {
             <div className="flex items-center gap-2 border-l border-stone-300 pl-3">
               {avatarUrl && (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img 
-                  src={avatarUrl} 
-                  alt={firstName} 
-                  className="h-7 w-7 rounded-full shadow-sm ring-2 ring-stone-100" 
-                  referrerPolicy="no-referrer" 
+                <img
+                  src={avatarUrl}
+                  alt={firstName}
+                  className="h-7 w-7 rounded-full shadow-sm ring-2 ring-stone-100"
+                  referrerPolicy="no-referrer"
                 />
               )}
               <span className="text-sm font-medium text-stone-600">
@@ -175,15 +364,32 @@ export default async function Home() {
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
         <NavigationTabBar />
-        
+
+        {/* Success Messages */}
+        {params.matchAccepted && (
+          <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-green-800 font-medium">
+              Match accepted! You can now start logging your scores.
+            </p>
+          </div>
+        )}
+        {params.matchDeclined && (
+          <div className="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <p className="text-amber-800 font-medium">
+              Match invitation declined.
+            </p>
+          </div>
+        )}
+
         {/* Pending Invitations */}
         {pendingInvitations && pendingInvitations.length > 0 && (
           <PendingInvitations invitations={pendingInvitations} />
         )}
-        
+
         {/* Active Match Banner */}
         {activeMatch && <ActiveMatchBanner match={activeMatch} />}
-        
+
         {/* Challenge Button (if no active match) */}
         {!activeMatch && (
           <div className="mb-6">
@@ -191,29 +397,9 @@ export default async function Home() {
           </div>
         )}
 
-        {/* Completed Matches Section */}
-        {completedMatches && completedMatches.length > 0 && (
-          <div className="mb-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-serif font-semibold text-stone-800 flex items-center gap-2">
-                <Users className="h-5 w-5 text-forest" />
-                Recent Matches
-              </h2>
-            </div>
-            <div className="space-y-3">
-              {completedMatches.map((match) => (
-                <MatchResultCard 
-                  key={match.id} 
-                  match={match} 
-                  currentUserId={user.id} 
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Sessions Section */}
-        <DashboardClient initialSessions={sessions || []} />
+        <DashboardClient initialSessions={dashboardEntries} />
       </main>
     </div>
   )

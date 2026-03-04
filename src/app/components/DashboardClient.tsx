@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Pencil, Trash2, ChevronDown, ChevronRight, MapPin, FileText, X, Target } from 'lucide-react'
 import { isSameDay } from 'date-fns'
@@ -9,8 +9,8 @@ import { createClient } from '@/utils/supabase/client'
 
 type Shot = {
     score: number
-    is_x?: boolean
-    is_m?: boolean
+    is_x?: boolean | null
+    is_m?: boolean | null
 }
 
 type End = {
@@ -22,9 +22,13 @@ type End = {
 type Session = {
     id: string
     session_date: string
+    display_date: string
     distance: number | null
     notes: string | null
     ends: End[]
+    is_match: boolean
+    match_id: string | null
+    match_score_summary: string | null
 }
 
 // Shot badge color based on archery target scoring
@@ -55,10 +59,33 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
+    useEffect(() => {
+        setSessions(initialSessions)
+    }, [initialSessions])
+
+    const parseTimestamp = (value: string): Date => {
+        const trimmed = value.trim()
+        const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+        const parsed = new Date(normalized)
+
+        if (!Number.isNaN(parsed.getTime())) {
+            return parsed
+        }
+
+        const [datePart, timePart] = normalized.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+
+        if (timePart) {
+            const timeOnly = timePart.split(/[+-]/)[0].replace('Z', '')
+            const [hour = '0', minute = '0', second = '0'] = timeOnly.split(':')
+            return new Date(year, (month || 1) - 1, day || 1, Number(hour), Number(minute), Number(second))
+        }
+
+        return new Date(year, (month || 1) - 1, day || 1)
+    }
+
     const parseLocalDate = (dateStr: string) => {
-        // Parse the ISO string and convert to local date
-        // This ensures we get the correct local date even if UTC date is different
-        const utcDate = new Date(dateStr)
+        const utcDate = parseTimestamp(dateStr)
         return new Date(
             utcDate.getFullYear(),
             utcDate.getMonth(),
@@ -66,14 +93,20 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
         )
     }
 
-    // Extract dates that contain at least one session for Calendar mapping
-    const sessionDates = sessions.map(s => parseLocalDate(s.session_date))
+    // Extract dates for calendar markers (solo vs match entries)
+    const soloDates = sessions
+        .filter((s) => !s.is_match)
+        .map((s) => parseLocalDate(s.display_date))
+
+    const matchDates = sessions
+        .filter((s) => s.is_match)
+        .map((s) => parseLocalDate(s.display_date))
 
     // Filter sessions by the selected date. If no date is selected, filter by the current viewed month.
     const filteredSessions = selectedDate
-        ? sessions.filter(s => isSameDay(parseLocalDate(s.session_date), selectedDate))
+        ? sessions.filter(s => isSameDay(parseLocalDate(s.display_date), selectedDate))
         : sessions.filter(s => {
-            const date = parseLocalDate(s.session_date)
+            const date = parseLocalDate(s.display_date)
             return date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear()
         })
 
@@ -82,6 +115,10 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
         setExpandedSessionId(prev => prev === sessionId ? null : sessionId)
     }
 
+    console.log('[DashboardClient] Raw sessions:', sessions.length, sessions)
+    console.log('[DashboardClient] Filtered sessions:', filteredSessions.length, filteredSessions)
+    console.log('[DashboardClient] Current month:', currentMonth.toISOString())
+
     // Handle Delete Session
     const handleDelete = async (sessionId: string) => {
         if (!window.confirm("Are you sure you want to delete this session? This cannot be undone.")) {
@@ -89,7 +126,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
         }
 
         const supabase = createClient()
-        
+
         const { error } = await supabase
             .from('sessions')
             .delete()
@@ -115,7 +152,8 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
         <div>
             {/* Interactive Calendar View */}
             <DashboardCalendar
-                sessionDates={sessionDates}
+                soloDates={soloDates}
+                matchDates={matchDates}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
                 currentMonth={currentMonth}
@@ -125,8 +163,8 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
             <div className="flex items-center justify-between mt-8 mb-6">
                 <h2 className="text-xl font-serif font-semibold text-stone-800">
                     {selectedDate
-                        ? `Sessions for ${selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : `Sessions in ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
+                        ? `Entries for ${selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : `Entries in ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
                 </h2>
                 {selectedDate && (
                     <button
@@ -163,7 +201,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 flex-wrap text-sm">
                                             <span className="font-medium text-stone-700">
-                                                {new Date(session.session_date).toLocaleString(undefined, {
+                                                {parseTimestamp(session.display_date).toLocaleString(undefined, {
                                                     weekday: 'short',
                                                     month: 'short',
                                                     day: 'numeric',
@@ -171,28 +209,51 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                     minute: '2-digit',
                                                 })}
                                             </span>
+                                            {session.is_match && (
+                                                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+                                                    Match
+                                                </span>
+                                            )}
                                             <span className="text-stone-300">|</span>
                                             <span className="text-stone-600">{totalArrows} Arrows</span>
                                             <span className="text-stone-300">|</span>
                                             <span className="text-stone-600">{session.ends?.length || 0} Ends</span>
                                             <span className="text-stone-300">|</span>
                                             <span className="font-bold text-forest">{totalScore} Pts</span>
+                                            {session.is_match && session.match_score_summary && (
+                                                <>
+                                                    <span className="text-stone-300">|</span>
+                                                    <span className="text-stone-600">{session.match_score_summary}</span>
+                                                </>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
-                                            <Link
-                                                href={`/log?edit=${session.id}`}
-                                                className="rounded-full p-1.5 text-stone-400 hover:bg-forest hover:text-white transition-colors"
-                                                title="Edit Session"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDelete(session.id)}
-                                                className="rounded-full p-1.5 text-stone-400 hover:bg-terracotta hover:text-white transition-colors"
-                                                title="Delete Session"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </button>
+                                            {session.is_match && session.match_id ? (
+                                                <Link
+                                                    href={`/match/${session.match_id}`}
+                                                    className="rounded-full p-1.5 text-stone-400 hover:bg-forest hover:text-white transition-colors"
+                                                    title="View Match"
+                                                >
+                                                    <Target className="h-3.5 w-3.5" />
+                                                </Link>
+                                            ) : (
+                                                <>
+                                                    <Link
+                                                        href={`/log?edit=${session.id}`}
+                                                        className="rounded-full p-1.5 text-stone-400 hover:bg-forest hover:text-white transition-colors"
+                                                        title="Edit Session"
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleDelete(session.id)}
+                                                        className="rounded-full p-1.5 text-stone-400 hover:bg-terracotta hover:text-white transition-colors"
+                                                        title="Delete Session"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -293,10 +354,10 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                 <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-stone-100/50">
                     <Target className="h-12 w-12 text-stone-300 mb-3" />
                     <h3 className="text-lg font-serif font-semibold text-stone-800">
-                        No sessions found
+                        No entries found
                     </h3>
                     <p className="mt-2 text-sm text-stone-500 text-center max-w-[250px]">
-                        {selectedDate ? "No practice logged on this date." : "Get started by logging your first practice."}
+                        {selectedDate ? "No completed entries on this date." : "Get started by logging your first practice."}
                     </p>
                 </div>
             )}

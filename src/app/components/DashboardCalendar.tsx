@@ -4,13 +4,15 @@ import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/style.css'
 
 export function DashboardCalendar({
-    sessionDates,
+    soloDates,
+    matchDates,
     selectedDate,
     onSelectDate,
     currentMonth,
     onMonthChange,
 }: {
-    sessionDates: Date[],
+    soloDates: Date[],
+    matchDates: Date[],
     selectedDate?: Date,
     onSelectDate?: (date: Date | undefined) => void,
     currentMonth?: Date,
@@ -27,8 +29,8 @@ export function DashboardCalendar({
                     // Toggle selection if the same date is clicked again
                     if (onSelectDate) onSelectDate(date);
                 }}
-                modifiers={{ hasSession: sessionDates }}
-                modifiersClassNames={{ hasSession: 'rdp-day_hasSession' }}
+                modifiers={{ hasSession: soloDates, hasMatch: matchDates }}
+                modifiersClassNames={{ hasSession: 'rdp-day_hasSession', hasMatch: 'rdp-day_hasMatch' }}
                 className="w-full flex justify-center max-w-sm"
                 disableNavigation={false}
                 showOutsideDays={false}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Plus, Minus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
+import { revalidateDashboard } from '../actions/sessions'
 
 // Types
 type Shot = { id?: string, score: number | null, is_x?: boolean, is_m?: boolean }
@@ -36,7 +37,28 @@ type InitialSessionType = {
     }[]
 }
 
-export function ScorecardClient({ userId, initialSession }: { userId: string, initialSession?: InitialSessionType | null }) {
+type MatchDetailsType = {
+    id: string
+    config_distance: number
+    config_ends_count: number
+    config_arrows_per_end: number
+    challenger_user_id: string
+    opponent_user_id: string | null
+    challenger_session_id: string | null
+    opponent_session_id: string | null
+    status: string
+}
+
+interface ScorecardClientProps {
+    userId: string
+    initialSession?: InitialSessionType | null
+    matchId?: string
+    matchDetails?: MatchDetailsType | null
+}
+
+export function ScorecardClient({ userId, initialSession, matchId, matchDetails }: ScorecardClientProps) {
+    console.log('[ScorecardClient] Props received:', { userId, matchId, matchDetails, hasInitialSession: !!initialSession })
+
     const router = useRouter()
     const supabase = createClient()
 
@@ -81,10 +103,18 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
         return `${year}-${month}-${day}`
     }
 
-    const [distance, setDistance] = useState<string>(initialSession?.distance?.toString() || '')
+    // Use match config for defaults if available
+    const defaultDistance = initialSession?.distance?.toString() ||
+        matchDetails?.config_distance?.toString() ||
+        ''
+    const defaultShotsPerEnd = initialSession?.ends?.[0]?.shots?.length ||
+        matchDetails?.config_arrows_per_end ||
+        5
+
+    const [distance, setDistance] = useState<string>(defaultDistance)
     const [date, setDate] = useState(initialSession?.session_date?.split('T')[0] || getLocalDateString())
     const [notes, setNotes] = useState(initialSession?.notes || '')
-    const [shotsPerEnd, setShotsPerEnd] = useState(initialSession?.ends?.[0]?.shots?.length || 5)
+    const [shotsPerEnd, setShotsPerEnd] = useState(defaultShotsPerEnd)
     const [ends, setEnds] = useState<End[]>(getDefaultEnds())
 
     // Active Input tracking for Custom Keypad
@@ -321,7 +351,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
             const hours = String(now.getHours()).padStart(2, '0')
             const minutes = String(now.getMinutes()).padStart(2, '0')
             const seconds = String(now.getSeconds()).padStart(2, '0')
-            
+
             // Create ISO string that preserves local time (e.g., "2025-03-02T21:58:00")
             // JavaScript will interpret this as local time and convert to UTC correctly
             const sessionDateISO = new Date(`${date}T${hours}:${minutes}:${seconds}`).toISOString()
@@ -338,19 +368,35 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                     .eq('id', sessionId)
                 if (sessionError) throw sessionError
             } else {
+                // Build insert data - include match_id if creating from a match
+                const insertData: Record<string, unknown> = {
+                    user_id: userId,
+                    session_date: sessionDateISO,
+                    notes: notes,
+                    distance: distance ? parseInt(distance) : null
+                }
+
+                // If linked to a match, set the match_id
+                console.log('[ScorecardClient] Creating session, matchId:', matchId)
+                if (matchId) {
+                    insertData.match_id = matchId
+                    console.log('[ScorecardClient] Setting match_id in insert data')
+                }
+
+                console.log('[ScorecardClient] Insert data:', insertData)
+
                 const { data: session, error: sessionError } = await supabase
                     .from('sessions')
-                    .insert({
-                        user_id: userId,
-                        session_date: sessionDateISO,
-                        notes: notes,
-                        distance: distance ? parseInt(distance) : null
-                    })
+                    .insert(insertData)
                     .select()
                     .single()
 
-                if (sessionError) throw sessionError
+                if (sessionError) {
+                    console.error('[ScorecardClient] Session insert error:', sessionError)
+                    throw sessionError
+                }
                 sessionId = session.id
+                console.log('[ScorecardClient] Session created:', sessionId, 'with match_id:', session.match_id)
             }
 
             // 2. Process Ends
@@ -427,11 +473,76 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                 }
             }
 
+            // 6. Link session to match if applicable
+            console.log('[ScorecardClient] Checking match linking:', { matchId, sessionId, hasInitialSession: !!initialSession })
+            if (matchId && sessionId && !initialSession) {
+                console.log('[ScorecardClient] Linking session to match:', { sessionId, matchId })
+
+                // Determine if user is challenger or opponent
+                const isChallenger = matchDetails?.challenger_user_id === userId
+                console.log('[ScorecardClient] User is challenger:', isChallenger, 'matchDetails:', matchDetails)
+
+                // Update the match with session_id and status
+                const updateData: Record<string, unknown> = {
+                    status: 'active',
+                    updated_at: new Date().toISOString(),
+                }
+
+                if (isChallenger) {
+                    updateData.challenger_session_id = sessionId
+                } else {
+                    updateData.opponent_session_id = sessionId
+                }
+
+                console.log('[ScorecardClient] Updating match with:', updateData)
+
+                const { data: updatedMatch, error: matchUpdateError } = await supabase
+                    .from('matches')
+                    .update(updateData)
+                    .eq('id', matchId)
+                    .select()
+
+                if (matchUpdateError) {
+                    console.error('[ScorecardClient] Error updating match:', matchUpdateError)
+                    // Don't throw - session is saved, match update can be retried
+                } else {
+                    console.log('[ScorecardClient] Match updated successfully:', updatedMatch)
+                }
+            } else {
+                console.log('[ScorecardClient] Skipping match linking - conditions not met')
+            }
+
+            // 7. Auto-submit scores for match session
+            if (matchId && sessionId && !initialSession) {
+                console.log('[ScorecardClient] Auto-submitting scores for match:', matchId)
+                try {
+                    const response = await fetch('/api/matches/submit-scores', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ matchId })
+                    })
+                    const result = await response.json()
+                    console.log('[ScorecardClient] Submit scores result:', result)
+                } catch (submitErr) {
+                    console.error('[ScorecardClient] Error auto-submitting scores:', submitErr)
+                    // Don't throw - session is saved, user can submit manually
+                }
+            }
+
             // Cleanup local storage on success
             const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
             localStorage.removeItem(draftKey)
-            router.push('/')
-            router.refresh()
+
+            // Revalidate the dashboard before redirecting to clear Next.js Router Cache
+            await revalidateDashboard()
+
+            // Force a full page reload to ensure the new session shows up in the calendar
+            // This bypasses any Next.js client-side caching edge cases
+            if (matchId) {
+                window.location.href = `/match/${matchId}`
+            } else {
+                window.location.href = '/'
+            }
 
         } catch (e: unknown) {
             console.error(e)
@@ -442,6 +553,26 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
 
     return (
         <div className="space-y-6">
+            {/* Match Info Banner */}
+            {matchDetails && (
+                <div className="rounded-xl bg-gradient-to-r from-forest to-forest/80 p-4 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-semibold">🏹 Match Session</p>
+                            <p className="text-sm text-white/80">
+                                {matchDetails.config_distance}m • {matchDetails.config_ends_count} ends • {matchDetails.config_arrows_per_end} arrows
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-white/70 uppercase tracking-wider">vs</p>
+                            <p className="text-sm font-medium">
+                                {matchDetails.challenger_user_id === userId ? 'Opponent' : 'Challenger'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Session Meta */}
             <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -730,7 +861,7 @@ export function ScorecardClient({ userId, initialSession }: { userId: string, in
                                 ) : (
                                     <>
                                         <Save className="h-5 w-5" />
-                                        Save Session
+                                        {matchDetails ? 'Save Match Session' : 'Save Session'}
                                     </>
                                 )}
                             </button>
