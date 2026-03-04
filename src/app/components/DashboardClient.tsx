@@ -257,93 +257,105 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                         </div>
                                     </div>
 
-                                    {/* Expand/Collapse Button */}
-                                    <button
-                                        onClick={() => toggleExpanded(session.id)}
-                                        className="mt-4 w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-stone-500 hover:text-forest transition-colors border-t border-stone-100"
-                                    >
-                                        {isExpanded ? (
-                                            <>
-                                                <ChevronDown className="h-4 w-4" />
-                                                Collapse View
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ChevronRight className="h-4 w-4" />
-                                                Expand View
-                                            </>
-                                        )}
-                                    </button>
+                                    {session.is_match && session.match_id ? (
+                                        <Link
+                                            href={`/match/${session.match_id}`}
+                                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-stone-600 hover:text-forest hover:bg-forest/5 transition-colors border-t border-stone-100 bg-stone-50/50"
+                                        >
+                                            View Full Match Details
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Link>
+                                    ) : (
+                                        <>
+                                            {/* Expand/Collapse Button for Solo Sessions */}
+                                            <button
+                                                onClick={() => toggleExpanded(session.id)}
+                                                className="mt-4 w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-stone-500 hover:text-forest transition-colors border-t border-stone-100"
+                                            >
+                                                {isExpanded ? (
+                                                    <>
+                                                        <ChevronDown className="h-4 w-4" />
+                                                        Collapse View
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ChevronRight className="h-4 w-4" />
+                                                        Expand View
+                                                    </>
+                                                )}
+                                            </button>
 
-                                    {/* Expanded Details */}
-                                    {isExpanded && (
-                                        <div className="mt-4 pt-4 border-t border-stone-200 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                                            {/* Session Meta Info */}
-                                            {(session.distance || session.notes) && (
-                                                <div className="space-y-2">
-                                                    {session.distance && (
-                                                        <div className="flex items-center gap-2 text-sm text-stone-600">
-                                                            <MapPin className="h-4 w-4 text-forest" />
-                                                            <span>Distance: <strong>{session.distance}m</strong></span>
+                                            {/* Expanded Details */}
+                                            {isExpanded && (
+                                                <div className="mt-4 pt-4 border-t border-stone-200 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                                    {/* Session Meta Info */}
+                                                    {(session.distance || session.notes) && (
+                                                        <div className="space-y-2">
+                                                            {session.distance && (
+                                                                <div className="flex items-center gap-2 text-sm text-stone-600">
+                                                                    <MapPin className="h-4 w-4 text-forest" />
+                                                                    <span>Distance: <strong>{session.distance}m</strong></span>
+                                                                </div>
+                                                            )}
+                                                            {session.notes && (
+                                                                <div className="flex items-start gap-2 text-sm text-stone-600">
+                                                                    <FileText className="h-4 w-4 text-forest mt-0.5" />
+                                                                    <span className="flex-1">{session.notes}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
-                                                    {session.notes && (
-                                                        <div className="flex items-start gap-2 text-sm text-stone-600">
-                                                            <FileText className="h-4 w-4 text-forest mt-0.5" />
-                                                            <span className="flex-1">{session.notes}</span>
-                                                        </div>
-                                                    )}
+
+                                                    {/* Ends Detail */}
+                                                    <div className="space-y-3">
+                                                        <h4 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">Ends Detail</h4>
+                                                        {session.ends?.map((end, endIdx) => {
+                                                            const endTotal = end.shots.reduce((acc, shot) => acc + (shot.score || 0), 0)
+                                                            const photoUrl = getPhotoUrl(end.photo_url)
+
+                                                            return (
+                                                                <div key={end.id} className="bg-stone-50 rounded-xl p-3">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <span className="text-sm font-semibold text-stone-700">End {endIdx + 1}</span>
+                                                                        <span className="text-sm font-medium text-forest">{endTotal} pts</span>
+                                                                    </div>
+
+                                                                    <div className="flex items-start gap-3">
+                                                                        {/* Shots */}
+                                                                        <div className="flex-1 flex flex-wrap gap-1">
+                                                                            {end.shots.map((shot, shotIdx) => (
+                                                                                <span
+                                                                                    key={shotIdx}
+                                                                                    className={`inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded border ${getShotBadgeColor(shot)}`}
+                                                                                    title={`Shot ${shotIdx + 1}: ${formatShotValue(shot)}`}
+                                                                                >
+                                                                                    {formatShotValue(shot)}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+
+                                                                        {/* Photo Thumbnail */}
+                                                                        {photoUrl && (
+                                                                            <button
+                                                                                onClick={() => setEnlargedPhoto(photoUrl)}
+                                                                                className="shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-stone-200 hover:border-forest transition-colors"
+                                                                            >
+                                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                                <img
+                                                                                    src={photoUrl}
+                                                                                    alt={`End ${endIdx + 1} target`}
+                                                                                    className="w-full h-full object-cover"
+                                                                                />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
                                                 </div>
                                             )}
-
-                                            {/* Ends Detail */}
-                                            <div className="space-y-3">
-                                                <h4 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">Ends Detail</h4>
-                                                {session.ends?.map((end, endIdx) => {
-                                                    const endTotal = end.shots.reduce((acc, shot) => acc + (shot.score || 0), 0)
-                                                    const photoUrl = getPhotoUrl(end.photo_url)
-
-                                                    return (
-                                                        <div key={end.id} className="bg-stone-50 rounded-xl p-3">
-                                                            <div className="flex items-center justify-between mb-2">
-                                                                <span className="text-sm font-semibold text-stone-700">End {endIdx + 1}</span>
-                                                                <span className="text-sm font-medium text-forest">{endTotal} pts</span>
-                                                            </div>
-
-                                                            <div className="flex items-start gap-3">
-                                                                {/* Shots */}
-                                                                <div className="flex-1 flex flex-wrap gap-1">
-                                                                    {end.shots.map((shot, shotIdx) => (
-                                                                        <span
-                                                                            key={shotIdx}
-                                                                            className={`inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded border ${getShotBadgeColor(shot)}`}
-                                                                            title={`Shot ${shotIdx + 1}: ${formatShotValue(shot)}`}
-                                                                        >
-                                                                            {formatShotValue(shot)}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-
-                                                                {/* Photo Thumbnail */}
-                                                                {photoUrl && (
-                                                                    <button
-                                                                        onClick={() => setEnlargedPhoto(photoUrl)}
-                                                                        className="shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-stone-200 hover:border-forest transition-colors"
-                                                                    >
-                                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                        <img
-                                                                            src={photoUrl}
-                                                                            alt={`End ${endIdx + 1} target`}
-                                                                            className="w-full h-full object-cover"
-                                                                        />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
