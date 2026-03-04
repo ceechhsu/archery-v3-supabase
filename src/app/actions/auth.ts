@@ -12,18 +12,23 @@ export async function signInWithGoogle() {
     // Determine URL dynamically to handle localhost and Vercel properly
     const getURL = async () => {
         const headersList = await headers()
-        let url = process?.env?.NEXT_PUBLIC_SITE_URL ?? process?.env?.VERCEL_URL
+        const origin = headersList.get('origin')
+        const host = headersList.get('x-forwarded-host') || headersList.get('host')
+        const proto = headersList.get('x-forwarded-proto') || 'https'
 
-        if (headersList.get('origin')) {
-            url = headersList.get('origin') as string
-        } else if (headersList.get('host')) {
-            url = `https://${headersList.get('host')}`
-        } else {
-            url = url || 'http://localhost:3000'
+        let url = process?.env?.NEXT_PUBLIC_SITE_URL ?? process?.env?.VERCEL_URL ?? 'http://localhost:3000'
+
+        if (origin) {
+            url = origin
+        } else if (host) {
+            const scheme = host.includes('localhost') ? 'http' : proto
+            url = `${scheme}://${host}`
         }
 
-        // Make sure to include `https://` when not localhost.
-        url = url.includes('http') ? url : `https://${url}`
+        if (!url.startsWith('http')) {
+            url = `https://${url}`
+        }
+
         // Make sure to including trailing `/`.
         url = url.charAt(url.length - 1) === '/' ? url : `${url}/`
         return url
