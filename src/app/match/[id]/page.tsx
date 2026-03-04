@@ -1,11 +1,12 @@
 // Force dynamic to prevent caching
 export const dynamic = 'force-dynamic'
-
+export const fetchCache = 'force-no-store'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { cancelMatch, submitMatchScores } from '@/app/actions/matches'
 import { Target, ArrowLeft, Mail, Clock, X, CheckCircle, Trophy, Hourglass } from 'lucide-react'
+import { MatchComparisonCard } from '@/app/components/matches/MatchComparisonCard'
 
 interface MatchPageProps {
     params: Promise<{ id: string }>
@@ -14,7 +15,7 @@ interface MatchPageProps {
 export default async function MatchPage({ params }: MatchPageProps) {
     const { id } = await params
     const supabase = await createClient()
-    
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         redirect('/login')
@@ -60,35 +61,85 @@ export default async function MatchPage({ params }: MatchPageProps) {
         invitation = inv
     }
 
-    // Check if user has created a session for this match
-    const { data: userSession } = await supabase
-        .from('sessions')
-        .select('id, is_submitted_to_match, submitted_at')
-        .eq('match_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-    // Check opponent's session status
-    const opponentUserId = isChallenger ? match.opponent_user_id : match.challenger_user_id
-    const { data: opponentSession } = await supabase
-        .from('sessions')
-        .select('id, is_submitted_to_match')
-        .eq('match_id', id)
-        .eq('user_id', opponentUserId)
-        .maybeSingle()
-
     const isPending = match.status === 'pending'
     const isActive = match.status === 'active'
     const isCompleted = match.status === 'completed'
     const isCancelled = match.status === 'cancelled'
-    
+
+    // Determine exact session IDs if match is completed, otherwise fallback to finding any session linked to this match
+    const userSessionId = isCompleted
+        ? (isChallenger ? match.challenger_session_id : match.opponent_session_id)
+        : null
+
+    const opponentSessionId = isCompleted
+        ? (isChallenger ? match.opponent_session_id : match.challenger_session_id)
+        : null
+
+    // Check if user has created a session for this match
+    let userSessionQuery = supabase
+        .from('sessions')
+        .select(`
+            id, 
+            is_submitted_to_match, 
+            submitted_at,
+            ends (
+                id,
+                end_index,
+                shots (
+                    score,
+                    is_x,
+                    is_m,
+                    shot_index
+                )
+            )
+        `)
+
+    if (userSessionId) {
+        userSessionQuery = userSessionQuery.eq('id', userSessionId)
+    } else {
+        userSessionQuery = userSessionQuery.eq('match_id', id).eq('user_id', user.id)
+    }
+
+    const { data: userSession } = await userSessionQuery.maybeSingle()
+
+    // Check opponent's session status
+    const opponentUserId = isChallenger ? match.opponent_user_id : match.challenger_user_id
+
+    let opponentSessionQuery = supabase
+        .from('sessions')
+        .select(`
+            id, 
+            is_submitted_to_match,
+            ends (
+                id,
+                end_index,
+                shots (
+                    score,
+                    is_x,
+                    is_m,
+                    shot_index
+                )
+            )
+        `)
+
+    if (opponentSessionId) {
+        opponentSessionQuery = opponentSessionQuery.eq('id', opponentSessionId)
+    } else {
+        opponentSessionQuery = opponentSessionQuery.eq('match_id', id).eq('user_id', opponentUserId)
+    }
+
+    const { data: opponentSession } = await opponentSessionQuery.maybeSingle()
+
     const hasCreatedSession = !!userSession
     const hasSubmittedScores = userSession?.is_submitted_to_match ?? false
     const opponentHasSubmitted = opponentSession?.is_submitted_to_match ?? false
 
+    console.log('[MatchPage] User Session Ends:', JSON.stringify(userSession?.ends, null, 2))
+    console.log('[MatchPage] Opp Session Ends:', JSON.stringify(opponentSession?.ends, null, 2))
+
     // Build invitation link
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    const inviteLink = invitation 
+    const inviteLink = invitation
         ? `${siteUrl}/match/invite?token=${invitation.id}&action=accept`
         : null
 
@@ -97,7 +148,7 @@ export default async function MatchPage({ params }: MatchPageProps) {
             <div className="mx-auto max-w-2xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center gap-4">
-                    <Link 
+                    <Link
                         href="/"
                         className="flex items-center gap-2 rounded-full bg-white p-2 shadow-sm hover:bg-stone-100"
                     >
@@ -109,18 +160,16 @@ export default async function MatchPage({ params }: MatchPageProps) {
                 {/* Status Card */}
                 <div className="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
                     <div className="flex items-center gap-3">
-                        <div className={`flex h-12 w-12 items-center justify-center rounded-full ${
-                            isPending ? 'bg-amber-100' :
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-full ${isPending ? 'bg-amber-100' :
                             isActive ? 'bg-forest/10' :
-                            isCompleted ? 'bg-blue-100' :
-                            'bg-stone-100'
-                        }`}>
-                            <Target className={`h-6 w-6 ${
-                                isPending ? 'text-amber-600' :
+                                isCompleted ? 'bg-blue-100' :
+                                    'bg-stone-100'
+                            }`}>
+                            <Target className={`h-6 w-6 ${isPending ? 'text-amber-600' :
                                 isActive ? 'text-forest' :
-                                isCompleted ? 'text-blue-600' :
-                                'text-stone-500'
-                            }`} />
+                                    isCompleted ? 'text-blue-600' :
+                                        'text-stone-500'
+                                }`} />
                         </div>
                         <div>
                             <p className="text-sm text-stone-500">Status</p>
@@ -160,7 +209,7 @@ export default async function MatchPage({ params }: MatchPageProps) {
                         <p className="mb-4 text-sm text-amber-700">
                             Share this link with your opponent to invite them to the match:
                         </p>
-                        
+
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -226,6 +275,23 @@ export default async function MatchPage({ params }: MatchPageProps) {
                                 )}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Arrow-by-Arrow Breakdown (Completed Only) */}
+                {isCompleted && (
+                    <div className="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+                        <h2 className="mb-4 text-lg font-semibold text-stone-800">Arrow Setup</h2>
+                        <MatchComparisonCard
+                            matchConfig={{
+                                distance: match.config_distance,
+                                endsCount: match.config_ends_count,
+                                arrowsPerEnd: match.config_arrows_per_end
+                            }}
+                            isChallenger={isChallenger}
+                            challengerSession={isChallenger ? userSession : opponentSession}
+                            opponentSession={isChallenger ? opponentSession : userSession}
+                        />
                     </div>
                 )}
 
@@ -331,7 +397,7 @@ export default async function MatchPage({ params }: MatchPageProps) {
                                 <p className="text-4xl mb-2">🏆</p>
                                 <h2 className="text-xl font-bold text-green-800">You Won!</h2>
                                 <p className="text-green-700">
-                                    {isChallenger 
+                                    {isChallenger
                                         ? `${match.challenger_total} vs ${match.opponent_total}`
                                         : `${match.opponent_total} vs ${match.challenger_total}`
                                     }
@@ -342,7 +408,7 @@ export default async function MatchPage({ params }: MatchPageProps) {
                                 <p className="text-4xl mb-2">😞</p>
                                 <h2 className="text-xl font-bold text-stone-800">You Lost</h2>
                                 <p className="text-stone-600">
-                                    {isChallenger 
+                                    {isChallenger
                                         ? `${match.challenger_total} vs ${match.opponent_total}`
                                         : `${match.opponent_total} vs ${match.challenger_total}`
                                     }

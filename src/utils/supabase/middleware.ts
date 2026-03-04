@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
 
     // Protect routes
     const pathname = request.nextUrl.pathname
-    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/auth')
+    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/auth') || pathname.startsWith('/test-match')
 
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone()
