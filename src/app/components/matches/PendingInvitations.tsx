@@ -44,11 +44,10 @@ export function PendingInvitations({ invitations }: PendingInvitationsProps) {
 
         if (result.error) {
             setMessage(result.error)
+            setProcessing(null)
         } else {
             window.location.reload()
         }
-
-        setProcessing(null)
     }
 
     return (
