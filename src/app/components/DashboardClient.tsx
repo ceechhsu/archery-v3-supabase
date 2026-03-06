@@ -221,24 +221,38 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                             
                                             {/* Row 2: Score display */}
                                             {session.is_match && session.match_score_summary ? (
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-semibold text-stone-800">
-                                                        You {totalScore} Pts
-                                                    </span>
-                                                    <span className="text-stone-400">-</span>
-                                                    <div className="flex items-center gap-2">
-                                                        {session.opponent_avatar_url && (
-                                                            <img 
-                                                                src={session.opponent_avatar_url} 
-                                                                alt={session.opponent_name || 'Opponent'}
-                                                                className="w-6 h-6 rounded-full object-cover ring-1 ring-stone-200"
-                                                                referrerPolicy="no-referrer"
-                                                            />
-                                                        )}
-                                                        <span className="font-medium text-stone-700">{session.opponent_name || 'Opponent'}</span>
-                                                        <span className="font-semibold text-stone-800">{session.match_score_summary.split(' - ')[1]} Pts</span>
-                                                    </div>
-                                                </div>
+                                                (() => {
+                                                    const myScore = totalScore
+                                                    const opponentScore = parseInt(session.match_score_summary.split(' - ')[1]) || 0
+                                                    const iWon = myScore > opponentScore
+                                                    const theyWon = opponentScore > myScore
+                                                    
+                                                    return (
+                                                        <div className="flex items-center gap-3">
+                                                            {/* My score - highlighted if I won */}
+                                                            <span className={`font-semibold ${iWon ? 'text-forest font-bold' : 'text-stone-500'}`}>
+                                                                You {myScore} Pts
+                                                                {iWon && <span className="ml-1">🏆</span>}
+                                                            </span>
+                                                            <span className="text-stone-400">-</span>
+                                                            {/* Opponent score - highlighted if they won */}
+                                                            <div className="flex items-center gap-2">
+                                                                {session.opponent_avatar_url && (
+                                                                    <img 
+                                                                        src={session.opponent_avatar_url} 
+                                                                        alt={session.opponent_name || 'Opponent'}
+                                                                        className={`w-6 h-6 rounded-full object-cover ${theyWon ? 'ring-2 ring-forest' : 'ring-1 ring-stone-200'}`}
+                                                                        referrerPolicy="no-referrer"
+                                                                    />
+                                                                )}
+                                                                <span className={`font-semibold ${theyWon ? 'text-forest font-bold' : 'text-stone-500'}`}>
+                                                                    {session.opponent_name || 'Opponent'} {opponentScore} Pts
+                                                                    {theyWon && <span className="ml-1">🏆</span>}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })()
                                             ) : (
                                                 <span className="font-semibold text-forest">{totalScore} Pts</span>
                                             )}
