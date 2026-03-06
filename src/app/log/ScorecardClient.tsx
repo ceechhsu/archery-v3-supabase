@@ -610,12 +610,14 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                     <div>
                         <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Date
+                            {isMatchSession && <span className="ml-2 text-xs font-normal text-stone-500">(Locked)</span>}
                         </label>
                         <input
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all"
+                            disabled={isMatchSession}
+                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all disabled:bg-stone-100 disabled:text-stone-500"
                         />
                     </div>
                     <div>
