@@ -28,13 +28,15 @@ type Session = {
     ends: End[]
     is_match: boolean
     match_id: string | null
-    match_score_summary: string | null
+    challenger_user_id: string | null
+    challenger_total: number | null
+    opponent_total: number | null
     opponent_name?: string | null
     opponent_avatar_url?: string | null
     isWinner?: boolean
     isTie?: boolean
-    yourXCount?: number
-    opponentXCount?: number
+    challenger_x_count?: number
+    opponent_x_count?: number
 }
 
 // Shot badge color based on archery target scoring
@@ -56,7 +58,7 @@ const formatShotValue = (shot: Shot): string => {
     return shot.score?.toString() || '-'
 }
 
-export function DashboardClient({ initialSessions }: { initialSessions: Session[] }) {
+export function DashboardClient({ initialSessions, currentUserId }: { initialSessions: Session[], currentUserId: string }) {
     const [sessions, setSessions] = useState<Session[]>(initialSessions)
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
@@ -224,10 +226,23 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                             </div>
                                             
                                             {/* Row 2: Score display */}
-                                            {session.is_match && session.match_score_summary ? (
+                                            {session.is_match ? (
                                                 (() => {
-                                                    const myScore = totalScore
-                                                    const opponentScore = parseInt(session.match_score_summary.split(' - ')[1]) || 0
+                                                    // Calculate scores based on whether user is challenger or opponent
+                                                    const isChallenger = session.challenger_user_id === currentUserId
+                                                    const myScore = isChallenger 
+                                                        ? session.challenger_total 
+                                                        : session.opponent_total
+                                                    const opponentScore = isChallenger 
+                                                        ? session.opponent_total 
+                                                        : session.challenger_total
+                                                    const myXCount = isChallenger 
+                                                        ? session.challenger_x_count 
+                                                        : session.opponent_x_count
+                                                    const opponentXCount = isChallenger 
+                                                        ? session.opponent_x_count 
+                                                        : session.challenger_x_count
+                                                    
                                                     const iWon = session.isWinner
                                                     const theyWon = !session.isWinner && !session.isTie
                                                     const isTie = session.isTie
@@ -236,7 +251,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                         <div className="flex flex-wrap items-center gap-3">
                                                             {/* My score - highlighted if I won */}
                                                             <span className={`font-semibold ${iWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
-                                                                You {myScore} Pts
+                                                                You {myScore ?? '-'} Pts
                                                                 {iWon && <span className="ml-1">🏆</span>}
                                                                 {isTie && <span className="ml-1">🤝</span>}
                                                             </span>
@@ -252,7 +267,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                                     />
                                                                 )}
                                                                 <span className={`font-semibold ${theyWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
-                                                                    {session.opponent_name || 'Opponent'} {opponentScore} Pts
+                                                                    {session.opponent_name || 'Opponent'} {opponentScore ?? '-'} Pts
                                                                     {theyWon && <span className="ml-1">🏆</span>}
                                                                     {isTie && <span className="ml-1">🤝</span>}
                                                                 </span>
@@ -260,7 +275,7 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                             {/* Show X counts when tied (tie-breaker info) */}
                                                             {isTie && (
                                                                 <span className="text-xs text-stone-500 ml-2">
-                                                                    (X's: {session.yourXCount} - {session.opponentXCount})
+                                                                    (X&apos;s: {myXCount ?? 0} - {opponentXCount ?? 0})
                                                                 </span>
                                                             )}
                                                         </div>

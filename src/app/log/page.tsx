@@ -73,7 +73,31 @@ export default async function LogSessionPage(props: {
         
         if (match) {
             console.log('[LogPage] Found match:', match.id, 'status:', match.status)
-            matchDetails = match
+            
+            // Fetch opponent profile
+            const opponentUserId = match.challenger_user_id === user.id 
+                ? match.opponent_user_id 
+                : match.challenger_user_id
+            
+            let opponentProfile = null
+            if (opponentUserId) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name, avatar_url')
+                    .eq('id', opponentUserId)
+                    .single()
+                if (profile) {
+                    opponentProfile = {
+                        name: profile.full_name?.split(' ')[0] || 'Opponent',
+                        avatar_url: profile.avatar_url
+                    }
+                }
+            }
+            
+            matchDetails = {
+                ...match,
+                opponentProfile
+            }
         } else {
             console.log('[LogPage] No match found')
         }

@@ -13,6 +13,8 @@ import { ChallengeButton } from './components/matches/ChallengeButton'
 import { Target, Users, CheckCircle } from 'lucide-react'
 import type { MatchDetails } from '@/types/matches.types'
 import { DeclinedMatchNotifications, type DeclinedMatch } from './components/matches/DeclinedMatchNotifications'
+import { RealtimeMatchListener } from './components/matches/RealtimeMatchListener'
+import { RealtimeInvitationsListener } from './components/matches/RealtimeInvitationsListener'
 
 type DashboardShot = {
   score: number
@@ -61,13 +63,15 @@ type DashboardCalendarEntry = {
   }[]
   is_match: boolean
   match_id: string | null
-  match_score_summary: string | null
+  challenger_user_id: string | null
+  challenger_total: number | null
+  opponent_total: number | null
   opponent_name?: string | null
   opponent_avatar_url?: string | null
   isWinner?: boolean
   isTie?: boolean
-  yourXCount?: number
-  opponentXCount?: number
+  challenger_x_count?: number
+  opponent_x_count?: number
 }
 
 interface HomePageProps {
@@ -223,11 +227,6 @@ export default async function Home({ searchParams }: HomePageProps) {
     const isWinner = match.winner_user_id === user.id
     const isTie = match.is_tie
 
-    const scoreSummary =
-      yourScore !== null && opponentScore !== null
-        ? `${yourScore} - ${opponentScore}`
-        : null
-
     const entry: DashboardCalendarEntry = {
       id: session.id,
       session_date: session.session_date,
@@ -237,13 +236,15 @@ export default async function Home({ searchParams }: HomePageProps) {
       ends: session.ends || [],
       is_match: true,
       match_id: matchId,
-      match_score_summary: scoreSummary,
+      challenger_user_id: match.challenger_user_id,
+      challenger_total: match.challenger_total,
+      opponent_total: match.opponent_total,
       opponent_name: oppName,
       opponent_avatar_url: oppAvatar,
       isWinner,
       isTie,
-      yourXCount: yourX ?? 0,
-      opponentXCount: opponentX ?? 0,
+      challenger_x_count: match.challenger_x_count,
+      opponent_x_count: match.opponent_x_count,
     }
 
     const existing = matchEntriesByMatchId.get(matchId)
@@ -570,13 +571,21 @@ export default async function Home({ searchParams }: HomePageProps) {
           </div>
         )}
 
+        {/* Realtime listener for new invitations */}
+        <RealtimeInvitationsListener userEmail={user.email || ''} />
+
         {/* Pending Invitations */}
         {pendingInvitations && pendingInvitations.length > 0 && (
           <PendingInvitations invitations={pendingInvitations} />
         )}
 
         {/* Active Match Banner */}
-        {activeMatch && <ActiveMatchBanner match={activeMatch} />}
+        {activeMatch && (
+          <>
+            <RealtimeMatchListener matchId={activeMatch.id} />
+            <ActiveMatchBanner match={activeMatch} />
+          </>
+        )}
 
         {/* Declined/Expired Match Notifications */}
         {declinedMatches.length > 0 && (
@@ -592,7 +601,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
 
         {/* Sessions Section */}
-        <DashboardClient initialSessions={dashboardEntries} />
+        <DashboardClient initialSessions={dashboardEntries} currentUserId={user.id} />
       </main>
     </div>
   )

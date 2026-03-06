@@ -61,10 +61,14 @@ export function MatchComparisonCard({ matchConfig, isChallenger, challengerSessi
         return session?.ends?.find(e => e.end_index === index - 1)
     }
 
-    // Helper to calculate total for an end
+    // Helper to calculate total for an end (accounting for X = 10 points, M = 0)
     const calculateEndTotal = (end?: End) => {
         if (!end || !end.shots) return 0
-        return end.shots.reduce((sum, shot) => sum + (shot.score || 0), 0)
+        return end.shots.reduce((sum, shot) => {
+            if (shot.is_m) return sum // Miss = 0
+            if (shot.is_x) return sum + 10 // X = 10 points
+            return sum + (shot.score || 0)
+        }, 0)
     }
 
     return (

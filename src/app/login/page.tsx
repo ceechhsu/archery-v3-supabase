@@ -1,12 +1,13 @@
 import { signInWithGoogle } from "@/app/actions/auth";
 import { Target } from "lucide-react";
+import { TargetGame } from "@/app/components/TargetGame";
 
 export default function LoginPage() {
     return (
         <div className="flex min-h-screen items-center justify-center p-4 bg-stone-50">
             <div className="w-full max-w-sm">
                 {/* Logo and branding */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-forest text-white mb-4 shadow-lg">
                         <Target className="h-8 w-8" />
                     </div>
@@ -17,6 +18,9 @@ export default function LoginPage() {
                         Track your progress, ends, and shots.
                     </p>
                 </div>
+
+                {/* Target Game */}
+                <TargetGame />
 
                 {/* Login card */}
                 <div className="rounded-2xl bg-white p-8 shadow-xl ring-1 ring-stone-200">

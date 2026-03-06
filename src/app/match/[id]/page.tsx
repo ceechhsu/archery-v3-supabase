@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/server'
 import { cancelMatch, submitMatchScores } from '@/app/actions/matches'
 import { Target, ArrowLeft, Mail, Clock, X, CheckCircle, Trophy, Hourglass } from 'lucide-react'
 import { MatchComparisonCard } from '@/app/components/matches/MatchComparisonCard'
+import { RealtimeMatchListener } from '@/app/components/matches/RealtimeMatchListener'
 
 interface MatchPageProps {
     params: Promise<{ id: string }>
@@ -145,6 +146,7 @@ export default async function MatchPage({ params }: MatchPageProps) {
 
     return (
         <div className="min-h-screen bg-stone-50 p-4">
+            <RealtimeMatchListener matchId={id} />
             <div className="mx-auto max-w-2xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center gap-4">

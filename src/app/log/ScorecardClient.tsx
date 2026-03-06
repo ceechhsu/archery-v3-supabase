@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { Plus, Minus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save } from 'lucide-react'
+import { Plus, Minus, Trash2, Camera, Image as ImageIcon, AlertCircle, Save, Cloud } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import { revalidateDashboard } from '../actions/sessions'
 
@@ -47,6 +47,10 @@ type MatchDetailsType = {
     challenger_session_id: string | null
     opponent_session_id: string | null
     status: string
+    opponentProfile?: {
+        name: string
+        avatar_url: string | null
+    } | null
 }
 
 interface ScorecardClientProps {
@@ -108,6 +112,12 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
     const [isOnline, setIsOnline] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [lastSaved, setLastSaved] = useState<Date | null>(null)
+    
+    // Generate a unique draft ID for this session instance
+    const draftIdRef = useRef<string>(
+        initialSession?.id || matchId || `new_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    )
 
     const distanceRef = useRef<HTMLInputElement>(null)
 
@@ -159,8 +169,8 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
 
-        // Load from cache if exists
-        const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
+        // Load from cache if exists - use draftIdRef for consistent key
+        const draftKey = `archery_v3_draft_${draftIdRef.current}`
         const cached = localStorage.getItem(draftKey)
 
         // Only load from cache if we are NOT editing a pre-existing session OR if we literally already have a cache for this exact edit session
@@ -181,6 +191,28 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
             }
         }
 
+        // Cleanup old drafts (older than 7 days) to prevent localStorage bloat
+        const cleanupOldDrafts = () => {
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i)
+                if (key?.startsWith('archery_v3_draft_')) {
+                    try {
+                        const draft = JSON.parse(localStorage.getItem(key) || '{}')
+                        if (draft.savedAt) {
+                            const savedTime = new Date(draft.savedAt).getTime()
+                            if (savedTime < sevenDaysAgo) {
+                                localStorage.removeItem(key)
+                            }
+                        }
+                    } catch {
+                        // Ignore parsing errors
+                    }
+                }
+            }
+        }
+        cleanupOldDrafts()
+
         return () => {
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
@@ -190,10 +222,18 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
     // Auto-save to local storage on change
     useEffect(() => {
         // Exclude File objects before stringifying
-        const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
+        const draftKey = `archery_v3_draft_${draftIdRef.current}`
         const cacheableEnds = ends.map(e => ({ id: e.id, shots: e.shots }))
-        localStorage.setItem(draftKey, JSON.stringify({ distance, date, notes, shotsPerEnd, ends: cacheableEnds }))
-    }, [distance, date, notes, shotsPerEnd, ends, initialSession?.id])
+        localStorage.setItem(draftKey, JSON.stringify({ 
+            distance, 
+            date, 
+            notes, 
+            shotsPerEnd, 
+            ends: cacheableEnds,
+            savedAt: new Date().toISOString()
+        }))
+        setLastSaved(new Date())
+    }, [distance, date, notes, shotsPerEnd, ends])
 
     // Modifer for Shots per End
     const handleShotsPerEndChange = (newTotal: number) => {
@@ -546,7 +586,7 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
             }
 
             // Cleanup local storage on success
-            const draftKey = initialSession?.id ? `archery_v3_draft_${initialSession.id}` : 'archery_v3_draft_new'
+            const draftKey = `archery_v3_draft_${draftIdRef.current}`
             localStorage.removeItem(draftKey)
 
             // Revalidate the dashboard before redirecting to clear Next.js Router Cache
@@ -579,11 +619,25 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                                 {matchDetails.config_distance}m • {matchDetails.config_ends_count} ends • {matchDetails.config_arrows_per_end} arrows
                             </p>
                         </div>
-                        <div className="text-right">
-                            <p className="text-xs text-white/70 uppercase tracking-wider">vs</p>
-                            <p className="text-sm font-medium">
-                                {matchDetails.challenger_user_id === userId ? 'Opponent' : 'Challenger'}
-                            </p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/70 uppercase tracking-wider">vs</span>
+                            {matchDetails.opponentProfile?.avatar_url ? (
+                                <img
+                                    src={matchDetails.opponentProfile.avatar_url}
+                                    alt={matchDetails.opponentProfile.name}
+                                    className="h-8 w-8 rounded-full border-2 border-white/30 object-cover"
+                                    referrerPolicy="no-referrer"
+                                />
+                            ) : (
+                                <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+                                    <span className="text-sm font-medium">
+                                        {matchDetails.opponentProfile?.name?.charAt(0) || '?'}
+                                    </span>
+                                </div>
+                            )}
+                            <span className="text-sm font-medium">
+                                {matchDetails.opponentProfile?.name || 'Opponent'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -861,7 +915,7 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                         )}
 
                         <div className="flex items-center justify-between">
-                            <div className="flex gap-6">
+                            <div className="flex gap-6 items-center">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Total Score</p>
                                     <p className="text-2xl font-bold text-forest">{sessionTotal}</p>
@@ -870,6 +924,12 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                                     <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Arrows</p>
                                     <p className="text-2xl font-bold text-stone-800">{totalArrows}</p>
                                 </div>
+                                {lastSaved && (
+                                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-400">
+                                        <Cloud className="h-3.5 w-3.5" />
+                                        <span>Draft saved</span>
+                                    </div>
+                                )}
                             </div>
 
                             <button
