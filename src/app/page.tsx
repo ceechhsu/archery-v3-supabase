@@ -189,9 +189,9 @@ export default async function Home({ searchParams }: HomePageProps) {
         ends: session.ends || [],
         is_match: false,
         match_id: null,
-        match_score_summary: null,
-        opponent_name: null,
-        opponent_avatar_url: null,
+        challenger_user_id: null,
+        challenger_total: null,
+        opponent_total: null,
       })
       continue
     }
