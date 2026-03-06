@@ -41,6 +41,10 @@ type DashboardSession = {
     opponent_user_id: string | null
     challenger_total: number | null
     opponent_total: number | null
+    challenger_x_count: number | null
+    opponent_x_count: number | null
+    winner_user_id: string | null
+    is_tie: boolean
   } | null
 }
 
