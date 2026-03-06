@@ -60,6 +60,10 @@ type DashboardCalendarEntry = {
   match_score_summary: string | null
   opponent_name?: string | null
   opponent_avatar_url?: string | null
+  isWinner?: boolean
+  isTie?: boolean
+  yourXCount?: number
+  opponentXCount?: number
 }
 
 interface HomePageProps {
@@ -198,12 +202,18 @@ export default async function Home({ searchParams }: HomePageProps) {
     const isChallenger = match.challenger_user_id === user.id
     const yourScore = isChallenger ? match.challenger_total : match.opponent_total
     const opponentScore = isChallenger ? match.opponent_total : match.challenger_total
+    const yourX = isChallenger ? match.challenger_x_count : match.opponent_x_count
+    const opponentX = isChallenger ? match.opponent_x_count : match.challenger_x_count
 
     // Get their real first name or fallback to "Opponent"
     const oppId = isChallenger ? match.opponent_user_id : match.challenger_user_id
     const oppProfile = oppId ? profileMap.get(oppId) : null
     const oppName = oppProfile?.name || 'Opponent'
     const oppAvatar = oppProfile?.avatar || null
+
+    // Determine winner based on match.winner_user_id
+    const isWinner = match.winner_user_id === user.id
+    const isTie = match.is_tie
 
     const scoreSummary =
       yourScore !== null && opponentScore !== null
@@ -222,6 +232,10 @@ export default async function Home({ searchParams }: HomePageProps) {
       match_score_summary: scoreSummary,
       opponent_name: oppName,
       opponent_avatar_url: oppAvatar,
+      isWinner,
+      isTie,
+      yourXCount: yourX ?? 0,
+      opponentXCount: opponentX ?? 0,
     }
 
     const existing = matchEntriesByMatchId.get(matchId)

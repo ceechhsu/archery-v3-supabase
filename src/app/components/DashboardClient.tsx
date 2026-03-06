@@ -31,6 +31,10 @@ type Session = {
     match_score_summary: string | null
     opponent_name?: string | null
     opponent_avatar_url?: string | null
+    isWinner?: boolean
+    isTie?: boolean
+    yourXCount?: number
+    opponentXCount?: number
 }
 
 // Shot badge color based on archery target scoring
@@ -224,15 +228,17 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                 (() => {
                                                     const myScore = totalScore
                                                     const opponentScore = parseInt(session.match_score_summary.split(' - ')[1]) || 0
-                                                    const iWon = myScore > opponentScore
-                                                    const theyWon = opponentScore > myScore
+                                                    const iWon = session.isWinner
+                                                    const theyWon = !session.isWinner && !session.isTie
+                                                    const isTie = session.isTie
                                                     
                                                     return (
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="flex flex-wrap items-center gap-3">
                                                             {/* My score - highlighted if I won */}
-                                                            <span className={`font-semibold ${iWon ? 'text-forest font-bold' : 'text-stone-500'}`}>
+                                                            <span className={`font-semibold ${iWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
                                                                 You {myScore} Pts
                                                                 {iWon && <span className="ml-1">🏆</span>}
+                                                                {isTie && <span className="ml-1">🤝</span>}
                                                             </span>
                                                             <span className="text-stone-400">-</span>
                                                             {/* Opponent score - highlighted if they won */}
@@ -241,15 +247,22 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                                     <img 
                                                                         src={session.opponent_avatar_url} 
                                                                         alt={session.opponent_name || 'Opponent'}
-                                                                        className={`w-6 h-6 rounded-full object-cover ${theyWon ? 'ring-2 ring-forest' : 'ring-1 ring-stone-200'}`}
+                                                                        className={`w-6 h-6 rounded-full object-cover ${theyWon ? 'ring-2 ring-forest' : isTie ? 'ring-2 ring-amber-400' : 'ring-1 ring-stone-200'}`}
                                                                         referrerPolicy="no-referrer"
                                                                     />
                                                                 )}
-                                                                <span className={`font-semibold ${theyWon ? 'text-forest font-bold' : 'text-stone-500'}`}>
+                                                                <span className={`font-semibold ${theyWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
                                                                     {session.opponent_name || 'Opponent'} {opponentScore} Pts
                                                                     {theyWon && <span className="ml-1">🏆</span>}
+                                                                    {isTie && <span className="ml-1">🤝</span>}
                                                                 </span>
                                                             </div>
+                                                            {/* Show X counts when tied (tie-breaker info) */}
+                                                            {isTie && (
+                                                                <span className="text-xs text-stone-500 ml-2">
+                                                                    (X's: {session.yourXCount} - {session.opponentXCount})
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )
                                                 })()
