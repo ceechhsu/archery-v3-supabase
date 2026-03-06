@@ -305,17 +305,45 @@ export default async function Home({ searchParams }: HomePageProps) {
   }
 
   // Fetch opponent profile for active match
+  // For pending matches, opponent_user_id is null, so we need to get it from the invitation
   let opponentProfileForActive: { name: string | null; avatar: string | null } = { name: null, avatar: null }
-  if (activeMatchData?.opponent_user_id) {
-    const { data: oppProfile } = await supabase
-      .from('profiles')
-      .select('full_name, avatar_url')
-      .eq('id', activeMatchData.opponent_user_id)
-      .single()
-    if (oppProfile) {
-      opponentProfileForActive = {
-        name: oppProfile.full_name?.split(' ')[0] || null,
-        avatar: oppProfile.avatar_url
+  
+  if (activeMatchData) {
+    let opponentUserId = activeMatchData.opponent_user_id
+    
+    // If opponent_user_id is null (pending match), get invitee_user_id from invitation
+    if (!opponentUserId && activeMatchData.status === 'pending') {
+      const { data: invitation } = await supabase
+        .from('match_invitations')
+        .select('invitee_user_id, invitee_email')
+        .eq('match_id', activeMatchData.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      if (invitation?.invitee_user_id) {
+        opponentUserId = invitation.invitee_user_id
+      } else if (invitation?.invitee_email) {
+        // Fallback to email-based name if user hasn't registered yet
+        opponentProfileForActive = {
+          name: invitation.invitee_email.split('@')[0],
+          avatar: null
+        }
+      }
+    }
+    
+    // Fetch profile if we have a user ID
+    if (opponentUserId) {
+      const { data: oppProfile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', opponentUserId)
+        .single()
+      if (oppProfile) {
+        opponentProfileForActive = {
+          name: oppProfile.full_name?.split(' ')[0] || null,
+          avatar: oppProfile.avatar_url
+        }
       }
     }
   }
