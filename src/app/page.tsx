@@ -307,9 +307,10 @@ export default async function Home({ searchParams }: HomePageProps) {
   // Fetch opponent profile for active match
   // For pending matches, opponent_user_id is null, so we need to get it from the invitation
   let opponentProfileForActive: { name: string | null; avatar: string | null } = { name: null, avatar: null }
+  let opponentUserId: string | null = null
   
   if (activeMatchData) {
-    let opponentUserId = activeMatchData.opponent_user_id
+    opponentUserId = activeMatchData.opponent_user_id
     
     // If opponent_user_id is null (pending match), get invitee_user_id from invitation
     if (!opponentUserId && activeMatchData.status === 'pending') {
@@ -317,7 +318,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         .from('match_invitations')
         .select('invitee_user_id, invitee_email')
         .eq('match_id', activeMatchData.id)
-        .order('created_at', { ascending: false })
+        .order('invited_at', { ascending: false })
         .limit(1)
         .maybeSingle()
       
@@ -357,9 +358,9 @@ export default async function Home({ searchParams }: HomePageProps) {
         full_name: null,
         avatar_url: null
       },
-      opponent: activeMatchData.opponent_user_id
+      opponent: opponentProfileForActive.name
         ? {
-          id: activeMatchData.opponent_user_id,
+          id: opponentUserId || activeMatchData.opponent_user_id || '',
           full_name: opponentProfileForActive.name,
           avatar_url: opponentProfileForActive.avatar
         }
