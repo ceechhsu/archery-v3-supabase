@@ -268,7 +268,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           .from('match_invitations')
           .select('status')
           .eq('match_id', match.id)
-          .order('created_at', { ascending: false })
+          .order('invited_at', { ascending: false })
           .limit(1)
           .maybeSingle()
 
