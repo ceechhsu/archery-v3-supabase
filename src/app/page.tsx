@@ -243,8 +243,8 @@ export default async function Home({ searchParams }: HomePageProps) {
       opponent_avatar_url: oppAvatar,
       isWinner,
       isTie,
-      challenger_x_count: match.challenger_x_count,
-      opponent_x_count: match.opponent_x_count,
+      challenger_x_count: match.challenger_x_count ?? undefined,
+      opponent_x_count: match.opponent_x_count ?? undefined,
     }
 
     const existing = matchEntriesByMatchId.get(matchId)
