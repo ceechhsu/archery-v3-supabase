@@ -49,6 +49,7 @@ export function ActiveMatchBanner({ match }: ActiveMatchBannerProps) {
                                 src={opponentAvatar}
                                 alt={opponentName}
                                 className="h-full w-full object-cover"
+                                referrerPolicy="no-referrer"
                             />
                         ) : (
                             <Target className="h-5 w-5" />
