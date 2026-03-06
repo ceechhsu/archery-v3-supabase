@@ -207,7 +207,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
     const scoreSummary =
       yourScore !== null && opponentScore !== null
-        ? `You ${yourScore}  -  ${opponentScore}`
+        ? `${yourScore} - ${opponentScore}`
         : null
 
     const entry: DashboardCalendarEntry = {

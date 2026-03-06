@@ -29,6 +29,8 @@ type Session = {
     is_match: boolean
     match_id: string | null
     match_score_summary: string | null
+    opponent_name?: string | null
+    opponent_avatar_url?: string | null
 }
 
 // Shot badge color based on archery target scoring
@@ -223,7 +225,25 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                             {session.is_match && session.match_score_summary && (
                                                 <>
                                                     <span className="text-stone-300">|</span>
-                                                    <span className="text-stone-600">{session.match_score_summary}</span>
+                                                    <span className="text-stone-600 flex items-center gap-2">
+                                                        <span>You</span>
+                                                        <span className="font-medium">{session.match_score_summary.split(' - ')[0]}</span>
+                                                        <span>-</span>
+                                                        {session.opponent_name && (
+                                                            <span className="flex items-center gap-1">
+                                                                {session.opponent_avatar_url && (
+                                                                    <img 
+                                                                        src={session.opponent_avatar_url} 
+                                                                        alt={session.opponent_name}
+                                                                        className="w-4 h-4 rounded-full object-cover"
+                                                                        referrerPolicy="no-referrer"
+                                                                    />
+                                                                )}
+                                                                <span>{session.opponent_name}</span>
+                                                            </span>
+                                                        )}
+                                                        <span className="font-medium">{session.match_score_summary.split(' - ')[1]}</span>
+                                                    </span>
                                                 </>
                                             )}
                                         </div>
