@@ -12,6 +12,7 @@ import { PendingInvitations } from './components/matches/PendingInvitations'
 import { ChallengeButton } from './components/matches/ChallengeButton'
 import { Target, Users, CheckCircle } from 'lucide-react'
 import type { MatchDetails } from '@/types/matches.types'
+import { DeclinedMatchNotifications, type DeclinedMatch } from './components/matches/DeclinedMatchNotifications'
 
 type DashboardShot = {
   score: number
@@ -57,6 +58,8 @@ type DashboardCalendarEntry = {
   is_match: boolean
   match_id: string | null
   match_score_summary: string | null
+  opponent_name?: string | null
+  opponent_avatar_url?: string | null
 }
 
 interface HomePageProps {
@@ -124,6 +127,30 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   const normalizedSessions = (sessions ?? []) as unknown as DashboardSession[]
 
+  // --- Start dynamic profile fetching for opponents ---
+  const opponentIds = new Set<string>()
+  for (const session of normalizedSessions) {
+    if (session.match && session.match.status === 'completed') {
+      const oppId = session.match.challenger_user_id === user.id ? session.match.opponent_user_id : session.match.challenger_user_id
+      if (oppId) opponentIds.add(oppId)
+    }
+  }
+
+  let profileMap = new Map<string, { name: string, avatar: string | null }>()
+  if (opponentIds.size > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', Array.from(opponentIds))
+    if (profiles) {
+      profileMap = new Map(profiles.map(p => [
+        p.id,
+        {
+          name: p.full_name?.split(' ')[0] || 'Opponent',
+          avatar: p.avatar_url
+        }
+      ]))
+    }
+  }
+  // --- End dynamic profile fetching ---
+
   // Build dashboard calendar entries:
   // - solo sessions always included
   // - match sessions included only when match is completed
@@ -147,6 +174,8 @@ export default async function Home({ searchParams }: HomePageProps) {
         is_match: false,
         match_id: null,
         match_score_summary: null,
+        opponent_name: null,
+        opponent_avatar_url: null,
       })
       continue
     }
@@ -169,9 +198,16 @@ export default async function Home({ searchParams }: HomePageProps) {
     const isChallenger = match.challenger_user_id === user.id
     const yourScore = isChallenger ? match.challenger_total : match.opponent_total
     const opponentScore = isChallenger ? match.opponent_total : match.challenger_total
+
+    // Get their real first name or fallback to "Opponent"
+    const oppId = isChallenger ? match.opponent_user_id : match.challenger_user_id
+    const oppProfile = oppId ? profileMap.get(oppId) : null
+    const oppName = oppProfile?.name || 'Opponent'
+    const oppAvatar = oppProfile?.avatar || null
+
     const scoreSummary =
       yourScore !== null && opponentScore !== null
-        ? `You ${yourScore} - Opponent ${opponentScore}`
+        ? `You ${yourScore}  -  ${opponentScore}`
         : null
 
     const entry: DashboardCalendarEntry = {
@@ -184,6 +220,8 @@ export default async function Home({ searchParams }: HomePageProps) {
       is_match: true,
       match_id: matchId,
       match_score_summary: scoreSummary,
+      opponent_name: oppName,
+      opponent_avatar_url: oppAvatar,
     }
 
     const existing = matchEntriesByMatchId.get(matchId)
@@ -205,35 +243,44 @@ export default async function Home({ searchParams }: HomePageProps) {
   dashboardEntries.push(...matchEntriesByMatchId.values())
   dashboardEntries.sort((a, b) => new Date(b.display_date).getTime() - new Date(a.display_date).getTime())
 
-  // Fetch active match
-  const { data: initialActiveMatchData, error: activeMatchError } = await supabase
+  // Fetch up to 5 potential active matches to handle cases where 
+  // older ones are secretly cancelled but still marked 'pending'
+  const { data: potentialActiveMatches, error: activeMatchError } = await supabase
     .from('matches')
     .select('*')
     .or(`challenger_user_id.eq.${user.id},opponent_user_id.eq.${user.id}`)
     .in('status', ['pending', 'accepted', 'active'])
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .limit(5)
 
-  let activeMatchData = initialActiveMatchData
+  let activeMatchData = null
 
   if (activeMatchError) {
-    console.error('Error fetching active match:', activeMatchError)
+    console.error('Error fetching active matches:', activeMatchError)
   }
 
-  // If the match is still marked pending but its invitation is already declined/expired,
-  // do not show it as an active match on the dashboard.
-  if (activeMatchData?.status === 'pending' && activeMatchData.challenger_user_id === user.id) {
-    const { data: invitationState } = await supabase
-      .from('match_invitations')
-      .select('status')
-      .eq('match_id', activeMatchData.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+  // Iterate to find the TRUE active match, discarding those that are actually declined
+  if (potentialActiveMatches && potentialActiveMatches.length > 0) {
+    for (const match of potentialActiveMatches) {
+      // If it's your pending challenge, verify the invitation wasn't already rejected
+      if (match.status === 'pending' && match.challenger_user_id === user.id) {
+        const { data: invitationState } = await supabase
+          .from('match_invitations')
+          .select('status')
+          .eq('match_id', match.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-    if (invitationState && invitationState.status !== 'pending') {
-      activeMatchData = null
+        if (invitationState && invitationState.status !== 'pending') {
+          // Invitation is not pending (e.g. declined/expired). This match is dead.
+          continue
+        }
+      }
+
+      // If we reach here, it's a valid active match!
+      activeMatchData = match
+      break
     }
   }
 
@@ -257,6 +304,22 @@ export default async function Home({ searchParams }: HomePageProps) {
     }
   }
 
+  // Fetch opponent profile for active match
+  let opponentProfileForActive: { name: string | null; avatar: string | null } = { name: null, avatar: null }
+  if (activeMatchData?.opponent_user_id) {
+    const { data: oppProfile } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('id', activeMatchData.opponent_user_id)
+      .single()
+    if (oppProfile) {
+      opponentProfileForActive = {
+        name: oppProfile.full_name?.split(' ')[0] || null,
+        avatar: oppProfile.avatar_url
+      }
+    }
+  }
+
   let activeMatch: MatchDetails | null = null
   if (activeMatchData) {
     activeMatch = {
@@ -269,8 +332,8 @@ export default async function Home({ searchParams }: HomePageProps) {
       opponent: activeMatchData.opponent_user_id
         ? {
           id: activeMatchData.opponent_user_id,
-          full_name: null,
-          avatar_url: null
+          full_name: opponentProfileForActive.name,
+          avatar_url: opponentProfileForActive.avatar
         }
         : null,
       winner: activeMatchData.winner_user_id
@@ -321,6 +384,80 @@ export default async function Home({ searchParams }: HomePageProps) {
     .eq('status', 'completed')
     .order('completed_at', { ascending: false })
     .limit(5)
+
+  // Fetch declined/expired matches in the last 7 days where the user was the challenger
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  // First find recent matches where this user is challenger
+  const { data: recentMatches } = await supabase
+    .from('matches')
+    .select('id, opponent_user_id')
+    .eq('challenger_user_id', user.id)
+    .gte('created_at', sevenDaysAgo.toISOString())
+
+  const declinedMatches: DeclinedMatch[] = []
+
+  if (recentMatches && recentMatches.length > 0) {
+    const matchIds = recentMatches.map(m => m.id)
+
+    // Find invitations for these matches that were declined or expired
+    const { data: relevantInvites } = await supabase
+      .from('match_invitations')
+      .select('id, match_id, status, invitee_email, invitee_user_id')
+      .in('match_id', matchIds)
+      .in('status', ['declined', 'expired'])
+
+    if (relevantInvites && relevantInvites.length > 0) {
+      // Need an extra fetch if the opponent's user_id isn't already in our profileMap
+      const missingOpponentIds = relevantInvites
+        .map(i => i.invitee_user_id)
+        .filter((id): id is string => id !== null && !profileMap.has(id))
+
+      if (missingOpponentIds.length > 0) {
+        const { data: moreProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', missingOpponentIds)
+
+        if (moreProfiles) {
+          moreProfiles.forEach(p => {
+            profileMap.set(p.id, {
+              name: p.full_name?.split(' ')[0] || 'Opponent',
+              avatar: p.avatar_url
+            })
+          })
+        }
+      }
+
+      for (const inv of relevantInvites) {
+        let oppName = inv.invitee_email.split('@')[0]
+        let oppAvatar = null
+
+        // Prefer the user's profile if we have it
+        if (inv.invitee_user_id && profileMap.has(inv.invitee_user_id)) {
+          const p = profileMap.get(inv.invitee_user_id)!
+          oppName = p.name
+          oppAvatar = p.avatar
+        } else {
+          // Also check if the match object itself had an opponent_id
+          const matchObj = recentMatches.find(m => m.id === inv.match_id)
+          if (matchObj?.opponent_user_id && profileMap.has(matchObj.opponent_user_id)) {
+            const p = profileMap.get(matchObj.opponent_user_id)!
+            oppName = p.name
+            oppAvatar = p.avatar
+          }
+        }
+
+        declinedMatches.push({
+          id: inv.match_id, // Important: use match_id so the localStorage matches
+          reason: inv.status === 'declined' ? 'Invitation declined' : 'Invitation expired',
+          name: oppName,
+          avatar_url: oppAvatar,
+        })
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -389,6 +526,11 @@ export default async function Home({ searchParams }: HomePageProps) {
 
         {/* Active Match Banner */}
         {activeMatch && <ActiveMatchBanner match={activeMatch} />}
+
+        {/* Declined/Expired Match Notifications */}
+        {declinedMatches.length > 0 && (
+          <DeclinedMatchNotifications matches={declinedMatches} />
+        )}
 
         {/* Challenge Button (if no active match) */}
         {!activeMatch && (
