@@ -62,8 +62,12 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
     const router = useRouter()
     const supabase = createClient()
 
+    // Check if this is a match session (config should be locked)
+    const isMatchSession = !!matchDetails
+    
     // State Initialization Handler
     const getDefaultEnds = (): End[] => {
+        // If editing existing session, use its ends
         if (initialSession && initialSession.ends && initialSession.ends.length > 0) {
             return initialSession.ends
                 .sort((a, b) => a.end_index - b.end_index)
@@ -85,6 +89,18 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                         }))
                 }))
         }
+        // If new match session, create ends based on match config
+        if (matchDetails) {
+            const endsCount = matchDetails.config_ends_count
+            const arrowsPerEnd = matchDetails.config_arrows_per_end
+            return Array(endsCount).fill(null).map(() => ({
+                id: crypto.randomUUID(),
+                shots: Array(arrowsPerEnd).fill({ score: null }),
+                photoFile: null,
+                photoPreview: null
+            }))
+        }
+        // Default for solo sessions
         return [{ id: crypto.randomUUID(), shots: Array(5).fill({ score: null }), photoFile: null, photoPreview: null }]
     }
 
@@ -579,6 +595,7 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                     <div>
                         <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Distance (M)
+                            {isMatchSession && <span className="ml-2 text-xs font-normal text-stone-500">(Locked)</span>}
                         </label>
                         <input
                             ref={distanceRef}
@@ -586,7 +603,8 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                             value={distance}
                             onChange={(e) => setDistance(e.target.value)}
                             placeholder="e.g. 18"
-                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all placeholder:text-stone-300"
+                            disabled={isMatchSession}
+                            className="w-full h-[42px] rounded-xl border-stone-200 bg-transparent px-4 font-medium text-stone-800 ring-1 ring-stone-200 focus:border-forest focus:ring-forest transition-all placeholder:text-stone-300 disabled:bg-stone-100 disabled:text-stone-500"
                         />
                     </div>
                     <div>
@@ -603,11 +621,12 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                     <div>
                         <label className="mb-2 block text-sm font-bold tracking-tight text-stone-800">
                             Arrows per End
+                            {isMatchSession && <span className="ml-2 text-xs font-normal text-stone-500">(Locked)</span>}
                         </label>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => handleShotsPerEndChange(shotsPerEnd - 1)}
-                                disabled={shotsPerEnd <= 3}
+                                disabled={shotsPerEnd <= 3 || isMatchSession}
                                 className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 transition-colors"
                             >
                                 <Minus className="h-4 w-4" />
@@ -615,7 +634,7 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                             <span className="w-10 text-center text-xl font-bold text-stone-800">{shotsPerEnd}</span>
                             <button
                                 onClick={() => handleShotsPerEndChange(shotsPerEnd + 1)}
-                                disabled={shotsPerEnd >= 12}
+                                disabled={shotsPerEnd >= 12 || isMatchSession}
                                 className="flex h-[42px] w-12 items-center justify-center rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 transition-colors"
                             >
                                 <Plus className="h-4 w-4" />
@@ -686,7 +705,7 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                                 <span className="text-sm font-medium text-stone-500 hidden sm:inline-block">
                                     Total: <span className="text-stone-800">{calculateEndTotal(end.shots)}</span>
                                 </span>
-                                {ends.length > 1 && (
+                                {ends.length > 1 && !isMatchSession && (
                                     <button
                                         onClick={() => removeEnd(endIdx)}
                                         className="text-terracotta hover:text-terracotta-light p-1 transition-colors"
@@ -769,14 +788,16 @@ export function ScorecardClient({ userId, initialSession, matchId, matchDetails 
                 ))}
             </div>
 
-            {/* Add End Button */}
-            <button
-                onClick={addEnd}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-200 py-4 font-medium text-stone-500 hover:border-forest hover:text-forest hover:bg-forest/5 transition-all"
-            >
-                <Plus className="h-5 w-5" />
-                Add End
-            </button>
+            {/* Add End Button - Hidden for match sessions */}
+            {!isMatchSession && (
+                <button
+                    onClick={addEnd}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-200 py-4 font-medium text-stone-500 hover:border-forest hover:text-forest hover:bg-forest/5 transition-all"
+                >
+                    <Plus className="h-5 w-5" />
+                    Add End
+                </button>
+            )}
 
             {/* Helper padding to ensure content isn't hidden behind the sticky footer/keypad */}
             {activeInput ? <div className="h-[360px]" /> : <div className="h-[120px]" />}
