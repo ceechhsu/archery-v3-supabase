@@ -199,11 +199,11 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                 className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-stone-300 hover:shadow-md relative group"
                             >
                                 <div className="p-4">
-                                    {/* Two-row layout for consistent structure */}
+                                    {/* Two-row layout */}
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
-                                            {/* Row 1: Date & Badge */}
-                                            <div className="flex items-center gap-2 mb-2">
+                                            {/* Row 1: Session meta */}
+                                            <div className="flex items-center gap-2 text-sm text-stone-500 mb-2">
                                                 <span className="font-medium text-stone-700">
                                                     {parseTimestamp(session.display_date).toLocaleString(undefined, {
                                                         weekday: 'short',
@@ -213,47 +213,35 @@ export function DashboardClient({ initialSessions }: { initialSessions: Session[
                                                         minute: '2-digit',
                                                     })}
                                                 </span>
-                                                {session.is_match && (
-                                                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
-                                                        Match
-                                                    </span>
-                                                )}
+                                                <span>·</span>
+                                                <span>{totalArrows} Arrows</span>
+                                                <span>·</span>
+                                                <span>{session.ends?.length || 0} Ends</span>
                                             </div>
                                             
-                                            {/* Row 2: Stats & Score */}
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                                                {/* Session Stats */}
-                                                <div className="flex items-center gap-2 text-stone-500">
-                                                    <span>{totalArrows} Arrows</span>
-                                                    <span className="text-stone-300">·</span>
-                                                    <span>{session.ends?.length || 0} Ends</span>
-                                                    <span className="text-stone-300">·</span>
-                                                    <span className="font-semibold text-forest">{totalScore} Pts</span>
-                                                </div>
-                                                
-                                                {/* Match Score - Separate flex item for clean layout */}
-                                                {session.is_match && session.match_score_summary && (
-                                                    <div className="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-1 ring-1 ring-stone-200">
-                                                        <span className="text-stone-500 text-xs uppercase tracking-wider">vs</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-stone-800">{session.match_score_summary.split(' - ')[0]}</span>
-                                                            <span className="text-stone-400">-</span>
-                                                            <div className="flex items-center gap-1.5">
-                                                                {session.opponent_avatar_url && (
-                                                                    <img 
-                                                                        src={session.opponent_avatar_url} 
-                                                                        alt={session.opponent_name || 'Opponent'}
-                                                                        className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
-                                                                        referrerPolicy="no-referrer"
-                                                                    />
-                                                                )}
-                                                                <span className="font-medium text-stone-700">{session.opponent_name || 'Opponent'}</span>
-                                                                <span className="font-bold text-stone-800">{session.match_score_summary.split(' - ')[1]}</span>
-                                                            </div>
-                                                        </div>
+                                            {/* Row 2: Score display */}
+                                            {session.is_match && session.match_score_summary ? (
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-semibold text-stone-800">
+                                                        You {totalScore} Pts
+                                                    </span>
+                                                    <span className="text-stone-400">-</span>
+                                                    <div className="flex items-center gap-2">
+                                                        {session.opponent_avatar_url && (
+                                                            <img 
+                                                                src={session.opponent_avatar_url} 
+                                                                alt={session.opponent_name || 'Opponent'}
+                                                                className="w-6 h-6 rounded-full object-cover ring-1 ring-stone-200"
+                                                                referrerPolicy="no-referrer"
+                                                            />
+                                                        )}
+                                                        <span className="font-medium text-stone-700">{session.opponent_name || 'Opponent'}</span>
+                                                        <span className="font-semibold text-stone-800">{session.match_score_summary.split(' - ')[1]} Pts</span>
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            ) : (
+                                                <span className="font-semibold text-forest">{totalScore} Pts</span>
+                                            )}
                                         </div>
                                         
                                         {/* Actions */}
