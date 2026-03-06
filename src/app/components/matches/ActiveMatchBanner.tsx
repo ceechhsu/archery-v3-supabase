@@ -7,8 +7,8 @@ interface ActiveMatchBannerProps {
 }
 
 export function ActiveMatchBanner({ match }: ActiveMatchBannerProps) {
-    const opponentName = match.opponent?.full_name || 
-                        'Opponent'
+    const opponentName = match.opponent?.full_name || 'Opponent'
+    const opponentAvatar = match.opponent?.avatar_url
 
     const isWaitingForOpponent = match.status === 'accepted' && !match.opponent_session_id
     const isInProgress = match.status === 'active'
@@ -42,8 +42,18 @@ export function ActiveMatchBanner({ match }: ActiveMatchBannerProps) {
         <div className="mb-6 rounded-xl bg-gradient-to-r from-forest to-forest/80 p-4 text-white shadow-lg">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                        <Target className="h-5 w-5" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 overflow-hidden">
+                        {opponentAvatar ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                                src={opponentAvatar}
+                                alt={opponentName}
+                                className="h-full w-full object-cover"
+                                referrerPolicy="no-referrer"
+                            />
+                        ) : (
+                            <Target className="h-5 w-5" />
+                        )}
                     </div>
                     <div>
                         <p className="font-medium">{statusText}</p>
