@@ -119,7 +119,11 @@ export default async function Home({ searchParams }: HomePageProps) {
         challenger_user_id,
         opponent_user_id,
         challenger_total,
-        opponent_total
+        opponent_total,
+        challenger_x_count,
+        opponent_x_count,
+        winner_user_id,
+        is_tie
       )
     `
     )
