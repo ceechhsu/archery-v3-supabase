@@ -224,57 +224,57 @@ export function DashboardClient({ initialSessions, currentUserId }: { initialSes
                                                 <span>·</span>
                                                 <span>{session.ends?.length || 0} Ends</span>
                                             </div>
-                                            
+
                                             {/* Row 2: Score display */}
                                             {session.is_match ? (
                                                 (() => {
                                                     // Calculate scores based on whether user is challenger or opponent
                                                     const isChallenger = session.challenger_user_id === currentUserId
-                                                    const myScore = isChallenger 
-                                                        ? session.challenger_total 
+                                                    const myScore = isChallenger
+                                                        ? session.challenger_total
                                                         : session.opponent_total
-                                                    const opponentScore = isChallenger 
-                                                        ? session.opponent_total 
+                                                    const opponentScore = isChallenger
+                                                        ? session.opponent_total
                                                         : session.challenger_total
-                                                    const myXCount = isChallenger 
-                                                        ? session.challenger_x_count 
+                                                    const myXCount = isChallenger
+                                                        ? session.challenger_x_count
                                                         : session.opponent_x_count
-                                                    const opponentXCount = isChallenger 
-                                                        ? session.opponent_x_count 
+                                                    const opponentXCount = isChallenger
+                                                        ? session.opponent_x_count
                                                         : session.challenger_x_count
-                                                    
+
                                                     const iWon = session.isWinner
                                                     const theyWon = !session.isWinner && !session.isTie
                                                     const isTie = session.isTie
-                                                    
+
                                                     return (
-                                                        <div className="flex flex-wrap items-center gap-3">
+                                                        <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap lg:gap-3">
                                                             {/* My score - highlighted if I won */}
-                                                            <span className={`font-semibold ${iWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
-                                                                You {myScore ?? '-'} Pts
+                                                            <span className={`flex items-center shrink-0 font-semibold ${iWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
+                                                                You {myScore ?? '-'}
                                                                 {iWon && <span className="ml-1">🏆</span>}
                                                                 {isTie && <span className="ml-1">🤝</span>}
                                                             </span>
-                                                            <span className="text-stone-400">-</span>
+                                                            <span className="text-stone-400 shrink-0">-</span>
                                                             {/* Opponent score - highlighted if they won */}
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-1.5 min-w-0">
                                                                 {session.opponent_avatar_url && (
-                                                                    <img 
-                                                                        src={session.opponent_avatar_url} 
+                                                                    <img
+                                                                        src={session.opponent_avatar_url}
                                                                         alt={session.opponent_name || 'Opponent'}
-                                                                        className={`w-6 h-6 rounded-full object-cover ${theyWon ? 'ring-2 ring-forest' : isTie ? 'ring-2 ring-amber-400' : 'ring-1 ring-stone-200'}`}
+                                                                        className={`w-5 h-5 shrink-0 rounded-full object-cover ${theyWon ? 'ring-2 ring-forest' : isTie ? 'ring-2 ring-amber-400' : 'ring-1 ring-stone-200'}`}
                                                                         referrerPolicy="no-referrer"
                                                                     />
                                                                 )}
-                                                                <span className={`font-semibold ${theyWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
-                                                                    {session.opponent_name || 'Opponent'} {opponentScore ?? '-'} Pts
+                                                                <span className={`truncate font-semibold ${theyWon ? 'text-forest font-bold' : isTie ? 'text-amber-600 font-bold' : 'text-stone-500'}`}>
+                                                                    {session.opponent_name || 'Opponent'} {opponentScore ?? '-'}
                                                                     {theyWon && <span className="ml-1">🏆</span>}
                                                                     {isTie && <span className="ml-1">🤝</span>}
                                                                 </span>
                                                             </div>
                                                             {/* Show X counts when tied (tie-breaker info) */}
                                                             {isTie && (
-                                                                <span className="text-xs text-stone-500 ml-2">
+                                                                <span className="text-xs text-stone-500 shrink-0 ml-1">
                                                                     (X&apos;s: {myXCount ?? 0} - {opponentXCount ?? 0})
                                                                 </span>
                                                             )}
@@ -285,7 +285,7 @@ export function DashboardClient({ initialSessions, currentUserId }: { initialSes
                                                 <span className="font-semibold text-forest">{totalScore} Pts</span>
                                             )}
                                         </div>
-                                        
+
                                         {/* Actions */}
                                         <div className="flex items-center gap-1 shrink-0">
                                             {session.is_match && session.match_id ? (

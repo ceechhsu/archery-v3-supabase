@@ -15,6 +15,7 @@ export default function TestMatchPage() {
             {
                 id: 'end-1-user',
                 end_index: 1,
+                photo_url: null,
                 shots: [
                     { score: 10, is_x: true, is_m: false, shot_index: 1 },
                     { score: 9, is_x: false, is_m: false, shot_index: 2 },
@@ -24,6 +25,7 @@ export default function TestMatchPage() {
             {
                 id: 'end-2-user',
                 end_index: 2,
+                photo_url: null,
                 shots: [
                     { score: 9, is_x: false, is_m: false, shot_index: 1 },
                     { score: 9, is_x: false, is_m: false, shot_index: 2 },
@@ -38,8 +40,9 @@ export default function TestMatchPage() {
         is_submitted_to_match: true,
         ends: [
             {
-                id: 'end-1-opp',
-                end_index: 1,
+                id: 'ce1',
+                end_index: 0,
+                photo_url: null,
                 shots: [
                     { score: 10, is_x: false, is_m: false, shot_index: 1 },
                     { score: 10, is_x: false, is_m: false, shot_index: 2 },
@@ -49,6 +52,7 @@ export default function TestMatchPage() {
             {
                 id: 'end-2-opp',
                 end_index: 2,
+                photo_url: null,
                 shots: [
                     { score: 8, is_x: false, is_m: false, shot_index: 1 },
                     { score: 8, is_x: false, is_m: false, shot_index: 2 },

@@ -13,6 +13,7 @@ type Shot = {
 type End = {
     id: string
     end_index: number
+    photo_url: string | null
     shots: Shot[]
 }
 
@@ -31,6 +32,7 @@ interface MatchComparisonCardProps {
     isChallenger: boolean
     challengerSession: SessionData
     opponentSession: SessionData
+    onPhotoClick?: (photoUrl: string) => void
 }
 
 // Shot badge color based on archery target scoring
@@ -51,7 +53,9 @@ const formatShotValue = (shot: Shot): string => {
     return shot.score?.toString() || '-'
 }
 
-export function MatchComparisonCard({ matchConfig, isChallenger, challengerSession, opponentSession }: MatchComparisonCardProps) {
+import { Image as ImageIcon } from 'lucide-react'
+
+export function MatchComparisonCard({ matchConfig, isChallenger, challengerSession, opponentSession, onPhotoClick }: MatchComparisonCardProps) {
     // Generate an array of end indices: [1, 2, ..., config_ends_count]
     const endIndices = Array.from({ length: matchConfig.endsCount }, (_, i) => i + 1)
 
@@ -121,7 +125,16 @@ export function MatchComparisonCard({ matchConfig, isChallenger, challengerSessi
                                         )
                                     })}
                                 </div>
-                                <div className="w-12 text-right">
+                                <div className="w-20 text-right flex items-center justify-end gap-1">
+                                    {userPerspective.data?.photo_url && (
+                                        <button
+                                            onClick={() => onPhotoClick?.(userPerspective.data!.photo_url!)}
+                                            className="p-1 text-stone-400 hover:text-forest transition-colors rounded-full hover:bg-stone-100"
+                                            title="View End Photo"
+                                        >
+                                            <ImageIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
                                     <span className="text-sm bg-stone-100 text-stone-700 px-2 py-1 rounded inline-block min-w-8 text-center font-bold">
                                         {userPerspective.total}
                                     </span>
@@ -153,7 +166,16 @@ export function MatchComparisonCard({ matchConfig, isChallenger, challengerSessi
                                         )
                                     })}
                                 </div>
-                                <div className="w-12 text-right">
+                                <div className="w-20 text-right flex items-center justify-end gap-1">
+                                    {opponentPerspective.data?.photo_url && (
+                                        <button
+                                            onClick={() => onPhotoClick?.(opponentPerspective.data!.photo_url!)}
+                                            className="p-1 text-stone-400 hover:text-forest transition-colors rounded-full hover:bg-stone-100"
+                                            title="View End Photo"
+                                        >
+                                            <ImageIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
                                     <span className="text-sm border border-stone-200 text-stone-600 px-2 py-1 rounded inline-block min-w-8 text-center font-medium">
                                         {opponentPerspective.total}
                                     </span>
